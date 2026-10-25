@@ -22,6 +22,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -40,23 +41,33 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import co.touchlab.kermit.Logger
 import com.eygraber.uri.toKmpUri
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.meshtastic.core.common.gpsDisabled
 import org.meshtastic.core.common.hasBluetoothLe
 import org.meshtastic.core.common.util.CommonUri
+import org.meshtastic.core.resources.Res
+import org.meshtastic.core.resources.media_camera_unavailable
+import java.io.File
+import java.io.IOException
 import java.net.URLEncoder
 
 @Composable
@@ -214,6 +225,119 @@ actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> U
         }
     return remember(launcher) {
         { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) }
+    }
+}
+
+@Composable
+@Suppress("LongMethod")
+actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): ((MediaCaptureType) -> Unit)? {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val showToast = rememberShowToast()
+    val onMediaCaptureState = rememberUpdatedState(onMediaCapture)
+    var pendingUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingFilePath by rememberSaveable { mutableStateOf<String?>(null) }
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val uriString = pendingUriString
+            val filePath = pendingFilePath
+            pendingUriString = null
+            pendingFilePath = null
+            if (uriString != null) {
+                val uri = Uri.parse(uriString)
+                if (result.resultCode == android.app.Activity.RESULT_OK) {
+                    onMediaCaptureState.value(uri.toKmpUri())
+                } else if (filePath != null) {
+                    File(filePath).delete()
+                }
+            }
+        }
+
+    val captureMedia: (MediaCaptureType) -> Unit =
+        remember(context, launcher, showToast) {
+            { captureType ->
+                val isPhoto = captureType == MediaCaptureType.PHOTO
+                val mimeType = if (isPhoto) "image/jpeg" else "video/mp4"
+                val captureDirectory = File(context.cacheDir, "media-captures")
+                var captureFile: File? = null
+                try {
+                    captureDirectory.mkdirs()
+                    captureFile = File.createTempFile("meshtastic_", if (isPhoto) ".jpg" else ".mp4", captureDirectory)
+                    val uri =
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.media-capture",
+                            captureFile,
+                        )
+                    val intent =
+                        Intent(
+                            if (isPhoto) {
+                                android.provider.MediaStore.ACTION_IMAGE_CAPTURE
+                            } else {
+                                android.provider.MediaStore.ACTION_VIDEO_CAPTURE
+                            },
+                        )
+                            .apply {
+                                type = mimeType
+                                putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+                                clipData = ClipData.newRawUri(captureFile.name, uri)
+                                addFlags(
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                                )
+                            }
+                    pendingUriString = uri.toString()
+                    pendingFilePath = captureFile.absolutePath
+                    launcher.launch(intent)
+                } catch (exception: ActivityNotFoundException) {
+                    pendingUriString = null
+                    pendingFilePath = null
+                    captureFile?.delete()
+                    Logger.w(exception) { "No camera app available for media capture" }
+                    scope.launch { showToast(getString(Res.string.media_camera_unavailable)) }
+                } catch (exception: SecurityException) {
+                    pendingUriString = null
+                    pendingFilePath = null
+                    captureFile?.delete()
+                    Logger.w(exception) { "Camera permission or URI access was denied" }
+                    scope.launch { showToast(getString(Res.string.media_camera_unavailable)) }
+                } catch (exception: IOException) {
+                    pendingUriString = null
+                    pendingFilePath = null
+                    captureFile?.delete()
+                    Logger.w(exception) { "Could not prepare a temporary media capture file" }
+                    scope.launch { showToast(getString(Res.string.media_camera_unavailable)) }
+                } catch (exception: IllegalArgumentException) {
+                    pendingUriString = null
+                    pendingFilePath = null
+                    captureFile?.delete()
+                    Logger.w(exception) { "Could not share the temporary media capture file" }
+                    scope.launch { showToast(getString(Res.string.media_camera_unavailable)) }
+                }
+            }
+        }
+    var requestedCapture by rememberSaveable { mutableStateOf<MediaCaptureType?>(null) }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val captureType = requestedCapture
+            requestedCapture = null
+            if (granted && captureType != null) {
+                captureMedia(captureType)
+            } else {
+                scope.launch { showToast(getString(Res.string.media_camera_unavailable)) }
+            }
+        }
+    return remember(context, captureMedia, permissionLauncher) {
+        { captureType ->
+            if (
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                captureMedia(captureType)
+            } else {
+                requestedCapture = captureType
+                permissionLauncher.launch(android.Manifest.permission.CAMERA)
+            }
+        }
     }
 }
 

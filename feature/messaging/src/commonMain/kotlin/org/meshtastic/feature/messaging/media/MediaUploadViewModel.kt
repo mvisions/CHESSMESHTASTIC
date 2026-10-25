@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.koin.core.annotation.KoinViewModel
 import org.meshtastic.core.common.util.CommonUri
 import org.meshtastic.core.common.util.nowMillis
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.FileService
 import org.meshtastic.core.repository.MediaUploadHost
 import org.meshtastic.core.repository.MediaUploader
@@ -37,6 +38,7 @@ import org.meshtastic.core.resources.media_backup_uguu
 import org.meshtastic.core.resources.media_backup_upload
 import org.meshtastic.core.resources.media_unsupported_type
 import org.meshtastic.core.resources.media_upload_failed
+import org.meshtastic.core.resources.vip_message_too_long
 import org.meshtastic.core.ui.util.AlertManager
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.safeLaunch
@@ -105,6 +107,9 @@ class MediaUploadViewModel(
                 } else {
                     sendMessageUseCase(url, request.contactKey, request.replyId)
                 }
+            } catch (e: VipMessageTooLongException) {
+                Logger.w(e) { "Media link exceeds the VIP Brotli radio packet limit" }
+                showMessage(UiText.Resource(Res.string.vip_message_too_long))
             } finally {
                 if (pendingBackup == null) _isUploading.value = false
             }

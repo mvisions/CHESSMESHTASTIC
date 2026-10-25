@@ -29,6 +29,7 @@ import org.meshtastic.core.repository.NodeRepository
 import org.meshtastic.core.repository.NodeRestartTracker
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PlatformAnalytics
+import org.meshtastic.core.repository.RadioConfigRepository
 import org.meshtastic.core.repository.RadioController
 import org.meshtastic.core.repository.usecase.SendMessageUseCase
 import org.meshtastic.core.repository.usecase.SendMessageUseCaseImpl
@@ -56,6 +57,7 @@ class CoreRepositoryModule {
         @Provided homoglyphEncodingPrefs: HomoglyphPrefs,
         @Provided messageQueue: MessageQueue,
         @Provided analytics: PlatformAnalytics,
+        @Provided radioConfigRepository: RadioConfigRepository,
     ): SendMessageUseCase = SendMessageUseCaseImpl(
         nodeRepository,
         packetRepository,
@@ -63,5 +65,6 @@ class CoreRepositoryModule {
         homoglyphEncodingPrefs,
         messageQueue,
         analytics,
+        radioConfigRepository,
     )
 }

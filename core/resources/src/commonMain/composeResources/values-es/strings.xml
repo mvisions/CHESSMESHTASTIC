@@ -16,6 +16,7 @@
   ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 <resources>
+    <string name="vip_message_too_long">El mensaje o enlace multimedia no cabe en un paquete VIP Brotli. Acorta el mensaje o utiliza un enlace más corto.</string>
     <!-- A11Y -->
     <string name="a11y_humidity">Humedad</string>
     <string name="a11y_temperature">Temperatura:</string>
@@ -772,10 +773,18 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <!-- WRITE -->
     <string name="you">Usted</string>
     <string name="media_attach">Adjuntar foto o vídeo</string>
+    <string name="vip_channel_join_title">¿Acceder a VIP?</string>
+    <string name="vip_channel_join_message">¿Deseas acceder al canal VIP? Se añadirá VIP como canal secundario con PSK VP== sin cambiar tus otros canales. La clave es compartida; no es un canal privado. El dispositivo puede reiniciarse para aplicar el cambio.</string>
+    <string name="vip_channel_connection_changed">El dispositivo o su configuración ha cambiado. Vuelve a conectar e intenta acceder a VIP de nuevo.</string>
+    <string name="vip_channel_no_slots">No hay un hueco secundario libre para VIP. No se ha reemplazado ningún canal existente.</string>
+    <string name="media_camera_unavailable">No se pudo abrir la cámara. Comprueba que haya una aplicación de cámara instalada e inténtalo de nuevo.</string>
+    <string name="media_choose_existing">Elegir de la galería</string>
     <string name="media_image_description">Foto compartida</string>
     <string name="media_play_video">Reproducir vídeo</string>
+    <string name="media_record_video">Grabar vídeo</string>
     <string name="media_report">Denunciar</string>
     <string name="media_report_description">Denunciar esta foto o vídeo al sitio que lo aloja (p. ej. contenido con menores o ilegal)</string>
+    <string name="media_take_photo">Hacer una foto</string>
     <string name="media_links_setting">Enlaces de fotos, vídeos y voz</string>
     <string name="media_links_setting_summary">Muestra fotos, vídeos y voz en los chats y permite adjuntarlos y grabar voz. Las subidas son públicas: Litterbox conserva los archivos 24 horas; el respaldo opcional Uguu los conserva 3 horas y requiere tu confirmación. Al cargar contenido, su servidor ve tu dirección IP.</string>
     <string name="media_unsupported_type">Solo se pueden compartir fotos y vídeos</string>

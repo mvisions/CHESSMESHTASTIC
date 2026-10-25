@@ -39,6 +39,7 @@ import org.meshtastic.core.model.MessageStatus
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
 import org.meshtastic.core.model.Position
+import org.meshtastic.core.model.util.VipBrotli
 import org.meshtastic.core.repository.AwaitedSendResult
 import org.meshtastic.core.repository.AwaitedSendStatus
 import org.meshtastic.core.repository.LocalNodeUnavailableException
@@ -51,6 +52,7 @@ import org.meshtastic.core.repository.SessionManager
 import org.meshtastic.core.repository.TracerouteHandler
 import org.meshtastic.proto.AdminMessage
 import org.meshtastic.proto.ChannelSet
+import org.meshtastic.proto.ChannelSettings
 import org.meshtastic.proto.LocalConfig
 import org.meshtastic.proto.MeshPacket
 import org.meshtastic.proto.NeighborInfo
@@ -165,6 +167,45 @@ class CommandSenderImplTest {
     }
 
     // --- sendData ---
+
+    @Test
+    fun sendData_vipCompressesOnlyTheWireCopyAndRetriesDoNotDoubleEncode() = runTest {
+        every { radioConfigRepository.channelSetFlow } returns
+            flowOf(
+                ChannelSet.Builder()
+                    .also {
+                        it.settings =
+                            listOf(
+                                ChannelSettings.Builder().build(),
+                                ChannelSettings.Builder().also { it.name = "VIP" }.build(),
+                            )
+                    }
+                    .build(),
+            )
+        commandSender =
+            CommandSenderImpl(
+                packetHandler,
+                nodeManager,
+                radioConfigRepository,
+                tracerouteHandler,
+                neighborInfoHandler,
+                sessionManager,
+                backgroundScope.asServiceScope(),
+            )
+        testScheduler.runCurrent()
+        val sent = mutableListOf<MeshPacket>()
+        everySuspend { packetHandler.sendToRadio(capture(sent)) } returns true
+        val text = "https://files.catbox.moe/movie.mp4"
+        val packet = DataPacket(NodeAddress.ID_BROADCAST, 1, text, replyId = 42)
+        commandSender.sendData(packet)
+        commandSender.sendData(packet)
+        assertEquals(text, packet.text)
+        sent.forEach {
+            assertEquals(text, VipBrotli.decode(requireNotNull(it.decoded).payload).utf8())
+            assertEquals(42, it.decoded?.reply_id)
+            assertEquals(1, it.channel)
+        }
+    }
 
     @Test
     fun sendData_setsIdWhenZero() = runTest {

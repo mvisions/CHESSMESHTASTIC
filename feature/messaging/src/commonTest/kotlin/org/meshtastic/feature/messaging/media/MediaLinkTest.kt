@@ -16,6 +16,8 @@
  */
 package org.meshtastic.feature.messaging.media
 
+import okio.ByteString.Companion.encodeUtf8
+import org.meshtastic.core.model.util.VipBrotli
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -23,6 +25,21 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MediaLinkTest {
+
+    @Test
+    fun vipBrotliLinksStillResolveToTheExistingMediaViewers() {
+        val samples =
+            listOf(
+                "https://litter.catbox.moe/image.jpg" to MediaLink.Kind.IMAGE,
+                "https://litter.catbox.moe/video.mp4" to MediaLink.Kind.VIDEO,
+                "https://litter.catbox.moe/voice.m4a#d=12" to MediaLink.Kind.AUDIO,
+            )
+        samples.forEach { (text, kind) ->
+            val decoded = VipBrotli.decode(VipBrotli.encode(text.encodeUtf8())).utf8()
+            assertEquals(kind, findMediaLink(decoded)?.kind)
+            assertTrue(isOnlyMediaLink(decoded, requireNotNull(findMediaLink(decoded))))
+        }
+    }
 
     @Test
     fun detectsImageLink() {

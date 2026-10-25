@@ -55,6 +55,9 @@ actual fun rememberOpenFileLauncher(onUriReceived: (CommonUri?) -> Unit): (mimeT
 
 @Composable actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit = {}
 
+@Composable
+actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): ((MediaCaptureType) -> Unit)? = null
+
 @Composable actual fun rememberOpenDocumentTreeLauncher(onTreeUriSelect: (CommonUri?) -> Unit): () -> Unit = {}
 
 @Composable

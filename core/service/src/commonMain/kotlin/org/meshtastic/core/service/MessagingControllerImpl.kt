@@ -59,7 +59,7 @@ internal class MessagingControllerImpl(
 
     override suspend fun sendMessage(packet: DataPacket) {
         commandSender.sendData(packet)
-        dataHandler.value.rememberDataPacket(packet, myNodeNum, false)
+        dataHandler.value.rememberDataPacket(packet, myNodeNum, false, isLocalSend = true)
         val bytes = packet.bytes ?: ByteString.EMPTY
         analytics.track("data_send", DataPair("num_bytes", bytes.size), DataPair("type", packet.dataType))
         // Text messages report their own action from SendMessageUseCase, where the user acted; this path runs on

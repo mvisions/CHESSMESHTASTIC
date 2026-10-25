@@ -59,6 +59,7 @@ kotlin {
             }
         }
         androidMain.dependencies {
+            implementation(projects.core.brotli)
             api(libs.androidx.annotation)
             api(libs.androidx.core.ktx)
         }
@@ -70,5 +71,17 @@ kotlin {
         }
 
         commonTest.dependencies { implementation(projects.core.testing) }
+
+        val nativeCodecMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.kompressor.brotli)
+                implementation(libs.brotli.common)
+                implementation(libs.brotli.encoder)
+                implementation(libs.brotli.decoder)
+            }
+        }
+        jvmMain.get().dependsOn(nativeCodecMain)
+        getByName("iosMain").dependsOn(nativeCodecMain)
     }
 }

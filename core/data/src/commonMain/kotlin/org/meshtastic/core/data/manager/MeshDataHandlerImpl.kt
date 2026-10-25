@@ -42,6 +42,7 @@ import org.meshtastic.core.model.isModifiableBy
 import org.meshtastic.core.model.source
 import org.meshtastic.core.model.textMentionsNode
 import org.meshtastic.core.model.util.MeshDataMapper
+import org.meshtastic.core.model.util.VipBrotli
 import org.meshtastic.core.model.util.decodeOrNull
 import org.meshtastic.core.model.util.isAlreadyJoined
 import org.meshtastic.core.model.util.isValidCodePoint
@@ -481,10 +482,22 @@ class MeshDataHandlerImpl(
         myNodeNum: Int,
         updateNotification: Boolean,
         session: RadioSessionContext?,
+        isLocalSend: Boolean,
     ) {
         if (dataPacket.dataType !in PERSISTED_DATA_PORT_NUMBERS) return
         radioInterfaceService.launchSessionWork(scope, session) {
-            persistDataPacket(dataPacket, myNodeNum, updateNotification)
+            val displayPacket = if (isLocalSend) dataPacket else decodeVipPacket(dataPacket) ?: return@launchSessionWork
+            persistDataPacket(displayPacket, myNodeNum, updateNotification)
+        }
+    }
+
+    private suspend fun decodeVipPacket(packet: DataPacket): DataPacket? {
+        if (!VipBrotli.appliesTo(packet, radioConfigRepository.channelSetFlow.first())) return packet
+        return try {
+            packet.copy(bytes = VipBrotli.decode(packet.bytes ?: ByteString.EMPTY))
+        } catch (e: IllegalArgumentException) {
+            Logger.w(e) { "Dropped unsupported or invalid VIP Brotli message (packetId=${packet.id})" }
+            null
         }
     }
 
@@ -629,7 +642,8 @@ class MeshDataHandlerImpl(
     private fun rememberReaction(packet: MeshPacket, dataPacket: DataPacket, session: RadioSessionContext) =
         radioInterfaceService.launchSessionWork(scope, session) {
             val decoded = packet.decoded ?: return@launchSessionWork
-            val emoji = decoded.payload.toByteArray().decodeToString()
+            val displayPacket = decodeVipPacket(dataPacket) ?: return@launchSessionWork
+            val emoji = displayPacket.bytes?.utf8().orEmpty()
             val fromId = nodeManager.toNodeID(packet.from)
             val toId = nodeManager.toNodeID(packet.to)
             val myNodeNum = nodeManager.myNodeNum.value ?: 0

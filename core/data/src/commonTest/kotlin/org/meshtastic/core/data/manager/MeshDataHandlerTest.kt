@@ -22,6 +22,7 @@ import dev.mokkery.answering.returns
 import dev.mokkery.every
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.any
+import dev.mokkery.matcher.matches
 import dev.mokkery.mock
 import dev.mokkery.verify
 import dev.mokkery.verify.VerifyMode.Companion.exactly
@@ -37,6 +38,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okio.ByteString.Companion.encodeUtf8
 import okio.ByteString.Companion.toByteString
 import org.meshtastic.core.common.di.asServiceScope
 import org.meshtastic.core.model.ContactSettings
@@ -46,6 +48,7 @@ import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
 import org.meshtastic.core.model.Reaction
 import org.meshtastic.core.model.util.MeshDataMapper
+import org.meshtastic.core.model.util.VipBrotli
 import org.meshtastic.core.repository.ActiveConversationTracker
 import org.meshtastic.core.repository.AdminPacketHandler
 import org.meshtastic.core.repository.MeshBeaconPrefs
@@ -210,6 +213,60 @@ class MeshDataHandlerTest {
     @Test
     fun testInitialization() {
         assertNotNull(handler)
+    }
+
+    @Test
+    fun `VIP received media link is decoded before storing and filtering`() = testScope.runTest {
+        everySuspend { packetRepository.getContactSettings(any()) } returns ContactSettings(contactKey = "test")
+        every { radioConfigRepository.channelSetFlow } returns
+            flowOf(
+                ChannelSet.Builder()
+                    .also {
+                        it.settings =
+                            listOf(
+                                ChannelSettings.Builder().build(),
+                                ChannelSettings.Builder().also { it.name = "VIP" }.build(),
+                            )
+                    }
+                    .build(),
+            )
+        val text = "https://files.catbox.moe/photo.jpg"
+        val packet =
+            DataPacket(NodeAddress.ID_BROADCAST, 1, text)
+                .copy(
+                    id = 123,
+                    from = "!000001c8",
+                    bytes = VipBrotli.encode(text.encodeUtf8()),
+                )
+        handler.rememberDataPacket(packet, 123, updateNotification = false)
+        advanceUntilIdle()
+        verifySuspend {
+            packetRepository.insert(matches { it.text == text }, 123, any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `VIP plain incoming messages are rejected but local display copy is kept`() = testScope.runTest {
+        everySuspend { packetRepository.getContactSettings(any()) } returns ContactSettings(contactKey = "test")
+        every { radioConfigRepository.channelSetFlow } returns
+            flowOf(
+                ChannelSet.Builder()
+                    .also {
+                        it.settings =
+                            listOf(
+                                ChannelSettings.Builder().build(),
+                                ChannelSettings.Builder().also { it.name = "VIP" }.build(),
+                            )
+                    }
+                    .build(),
+            )
+        val packet = DataPacket(NodeAddress.ID_BROADCAST, 1, "hello").copy(id = 12, from = "!000001c8")
+        handler.rememberDataPacket(packet, 123, updateNotification = false)
+        advanceUntilIdle()
+        verifySuspend(exactly(0)) { packetRepository.insert(any(), any(), any(), any(), any(), any()) }
+        handler.rememberDataPacket(packet, 123, updateNotification = false, isLocalSend = true)
+        advanceUntilIdle()
+        verifySuspend { packetRepository.insert(matches { it.text == "hello" }, 123, any(), any(), any(), any()) }
     }
 
     @Test

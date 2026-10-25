@@ -39,6 +39,7 @@ import org.junit.runner.RunWith
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.MessageStatus
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PersistedPacket
 import org.meshtastic.core.repository.PersistedPacketId
@@ -104,6 +105,41 @@ class SendMessageWorkerTest {
         assertEquals(ListenableWorker.Result.success(), result)
         assertEquals(listOf(dataPacket), radioController.sentPackets)
         verifySuspend { packetRepository.claimQueuedPacket(packetId) }
+        verifySuspend(mode = VerifyMode.exactly(0)) { packetRepository.rollbackEnroutePacket(any()) }
+    }
+
+    @Test
+    fun `oversized VIP payload fails permanently without retry`() = runTest {
+        val id = PersistedPacketId(myNodeNum = 123, uuid = 12345L)
+        val packet =
+            DataPacket(to = "^all", channel = 1, text = "hello").apply {
+                status = MessageStatus.QUEUED
+            }
+        everySuspend { packetRepository.claimQueuedPacket(id) } returns PersistedPacket(id, packet)
+        radioController.onSendMessage = { throw VipMessageTooLongException() }
+        val worker =
+            TestListenableWorkerBuilder<SendMessageWorker>(context)
+                .setInputData(
+                    workDataOf(
+                        SendMessageWorker.KEY_PACKET_UUID to id.uuid,
+                        SendMessageWorker.KEY_MY_NODE_NUM to id.myNodeNum,
+                    ),
+                )
+                .setWorkerFactory(
+                    object : androidx.work.WorkerFactory() {
+                        override fun createWorker(
+                            appContext: Context,
+                            workerClassName: String,
+                            workerParameters: WorkerParameters,
+                        ): ListenableWorker =
+                            SendMessageWorker(appContext, workerParameters, packetRepository, radioController)
+                    },
+                )
+                .build()
+
+        assertEquals(ListenableWorker.Result.failure(), worker.doWork())
+        assertEquals(MessageStatus.ERROR, packet.status)
+        verifySuspend { packetRepository.update(packet) }
         verifySuspend(mode = VerifyMode.exactly(0)) { packetRepository.rollbackEnroutePacket(any()) }
     }
 

@@ -89,6 +89,7 @@ toolchainManagement {
 
 include(
     ":core:ble",
+    ":core:brotli",
     ":core:common",
     ":core:data",
     ":core:database",
@@ -130,4 +131,3 @@ include(
     ":baselineprofile",
     ":store-screenshots",
 )
-

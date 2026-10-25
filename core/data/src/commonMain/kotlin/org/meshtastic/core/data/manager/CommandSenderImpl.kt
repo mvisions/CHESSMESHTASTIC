@@ -18,9 +18,12 @@ package org.meshtastic.core.data.manager
 
 import co.touchlab.kermit.Logger
 import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.koin.core.annotation.Single
@@ -32,6 +35,8 @@ import org.meshtastic.core.model.NodeAddress
 import org.meshtastic.core.model.Position
 import org.meshtastic.core.model.TelemetryType
 import org.meshtastic.core.model.util.TimeConstants
+import org.meshtastic.core.model.util.VipBrotli
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.model.util.isWithinSizeLimit
 import org.meshtastic.core.repository.AwaitedSendResult
 import org.meshtastic.core.repository.CommandSender
@@ -138,7 +143,15 @@ class CommandSenderImpl(
 
     override suspend fun sendData(p: DataPacket) {
         if (p.id == 0) p.id = generatePacketId()
-        val bytes = p.bytes ?: ByteString.EMPTY
+        // Keep the caller's packet in display form; only the radio copy carries the Brotli envelope.
+        val channels = radioConfigRepository.channelSetFlow.first()
+        val bytes =
+            try {
+                withContext(Dispatchers.Default) { VipBrotli.transportPayload(p, channels) }
+            } catch (e: VipMessageTooLongException) {
+                p.status = MessageStatus.ERROR
+                throw e
+            }
         require(p.dataType != 0) { "Port numbers must be non-zero!" }
 
         // Use Wire extension for accurate size validation
@@ -160,7 +173,7 @@ class CommandSenderImpl(
             p.status = MessageStatus.QUEUED
         }
 
-        if (!sendNow(p)) {
+        if (!sendNow(p, bytes)) {
             p.status = MessageStatus.ERROR
             // Persistence owners treat a normal return as successful admission; throw so they can requeue or fail it.
             throw PacketQueueRejectedException("Data packet")
@@ -168,7 +181,7 @@ class CommandSenderImpl(
         p.time = nowMillis
     }
 
-    private suspend fun sendNow(p: DataPacket): Boolean {
+    private suspend fun sendNow(p: DataPacket, payload: ByteString): Boolean {
         val meshPacket =
             buildMeshPacket(
                 to = resolveNodeNum(NodeAddress.fromString(p.to)),
@@ -180,7 +193,7 @@ class CommandSenderImpl(
                 Data.Builder()
                     .also { wb ->
                         wb.portnum = PortNum.fromValue(p.dataType) ?: PortNum.UNKNOWN_APP
-                        wb.payload = p.bytes ?: ByteString.EMPTY
+                        wb.payload = payload
                         wb.reply_id = p.replyId ?: 0
                         wb.emoji = p.emoji
                     }

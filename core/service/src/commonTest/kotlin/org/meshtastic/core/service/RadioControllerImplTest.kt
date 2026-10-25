@@ -399,7 +399,7 @@ class RadioControllerImplTest {
         controller.sendMessage(packet)
 
         verifySuspend { commandSender.sendData(packet) }
-        verifySuspend { dataHandler.rememberDataPacket(packet, 456, false) }
+        verifySuspend { dataHandler.rememberDataPacket(packet, 456, false, isLocalSend = true) }
     }
 
     @Test

@@ -16,6 +16,7 @@
   -->
 
 <resources>
+    <string name="vip_message_too_long">The message or media link does not fit in one VIP Brotli packet. Shorten the message or use a shorter link.</string>
     <!-- A11Y -->
     <string name="a11y_humidity">Humidity</string>
     <string name="a11y_label_value">%1$s: %2$s</string>
@@ -1149,16 +1150,24 @@
     <string name="match_any">Match Any | All</string>
     <string name="max">Max</string>
     <!-- MEDIA -->
+    <string name="vip_channel_join_title">Join VIP?</string>
+    <string name="vip_channel_join_message">Would you like to join the VIP channel? This adds VIP as a secondary channel with PSK VP== without changing your other channels. This is a shared key, not a private channel. Your device may restart to apply the change.</string>
+    <string name="vip_channel_connection_changed">The device or its configuration changed. Reconnect and try joining VIP again.</string>
+    <string name="vip_channel_no_slots">No free secondary channel slot is available for VIP. No existing channel was replaced.</string>
     <string name="media_attach">Attach photo or video</string>
     <string name="media_backup_title">Upload failed — use a backup?</string>
     <string name="media_backup_uguu">Litterbox did not return a usable link. Upload this file to Uguu (uguu.se) instead? The file will be public and deleted after 3 hours, not 24 hours. Maximum size: 128 MiB. Uguu receives the file and your IP address. Only the resulting link is sent through the mesh.</string>
     <string name="media_backup_upload">Upload to Uguu</string>
+    <string name="media_camera_unavailable">Could not open the camera. Check that a camera app is installed and try again.</string>
+    <string name="media_choose_existing">Choose from gallery</string>
     <string name="media_image_description">Shared photo</string>
     <string name="media_links_setting">Photo, video and voice links</string>
     <string name="media_links_setting_summary">Preview photo, video and voice-message links in chats, attach media and record voice messages. Uploads are public: Litterbox retains files for 24 hours; optional Uguu backup retains them for 3 hours and requires your confirmation. Loading media reveals your IP address to its host.</string>
     <string name="media_play_video">Play video</string>
+    <string name="media_record_video">Record video</string>
     <string name="media_report">Report</string>
     <string name="media_report_description">Report this photo or video to the hosting site (e.g. content involving minors or illegal content)</string>
+    <string name="media_take_photo">Take photo</string>
     <string name="media_unsupported_type">Only photos and videos can be shared</string>
     <string name="media_upload_failed">Could not upload the file. The service may be unavailable, the file may exceed its limits, or your connection may have failed. No link was sent.</string>
     <string name="media_uploading">Uploading file…</string>
@@ -2291,4 +2300,3 @@
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
 </resources>
-

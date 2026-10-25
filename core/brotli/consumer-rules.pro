@@ -1,0 +1,1 @@
+-keep class org.meshtastic.core.brotli.BrotliNative { *; }

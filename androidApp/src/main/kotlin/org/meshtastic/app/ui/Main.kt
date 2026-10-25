@@ -47,6 +47,7 @@ import org.meshtastic.core.resources.must_update
 import org.meshtastic.core.ui.component.MeshtasticAppShell
 import org.meshtastic.core.ui.component.MeshtasticNavDisplay
 import org.meshtastic.core.ui.component.MeshtasticNavigationSuite
+import org.meshtastic.core.ui.component.VipChannelPrompt
 import org.meshtastic.core.ui.viewmodel.UIViewModel
 import org.meshtastic.feature.connections.navigation.connectionsGraph
 import org.meshtastic.feature.discovery.navigation.discoveryGraph
@@ -72,6 +73,7 @@ fun MainScreen() {
     val settingsRadioConfigViewModelProvider = rememberSettingsRadioConfigViewModelProvider(backStack)
 
     AndroidAppVersionCheck(viewModel)
+    VipChannelPrompt()
 
     val lockdownState by viewModel.lockdownState.collectAsStateWithLifecycle()
     LockdownDialog(

@@ -22,6 +22,7 @@ import dev.mokkery.answering.returns
 import dev.mokkery.answering.throws
 import dev.mokkery.everySuspend
 import dev.mokkery.matcher.any
+import dev.mokkery.matcher.matches
 import dev.mokkery.mock
 import dev.mokkery.verify
 import dev.mokkery.verify.VerifyMode
@@ -33,16 +34,20 @@ import org.meshtastic.core.model.ContactKey
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.MessageQueue
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PersistedPacketId
 import org.meshtastic.core.repository.PlatformAnalytics
 import org.meshtastic.core.testing.FakeAppPreferences
 import org.meshtastic.core.testing.FakeNodeRepository
+import org.meshtastic.core.testing.FakeRadioConfigRepository
 import org.meshtastic.core.testing.FakeRadioController
+import org.meshtastic.proto.ChannelSettings
 import org.meshtastic.proto.Config
 import org.meshtastic.proto.DeviceMetadata
 import org.meshtastic.proto.User
+import kotlin.random.Random
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -57,6 +62,7 @@ class SendMessageUseCaseTest {
     private lateinit var messageQueue: MessageQueue
     private lateinit var analytics: PlatformAnalytics
     private lateinit var useCase: SendMessageUseCase
+    private lateinit var radioConfigRepository: FakeRadioConfigRepository
 
     @BeforeTest
     fun setUp() {
@@ -66,6 +72,7 @@ class SendMessageUseCaseTest {
         appPreferences = FakeAppPreferences()
         messageQueue = mock(MockMode.autofill)
         analytics = mock(MockMode.autofill)
+        radioConfigRepository = FakeRadioConfigRepository()
         everySuspend { packetRepository.savePacket(any(), any(), any(), any(), any(), any()) } returns
             PersistedPacketId(myNodeNum = 1, uuid = 10L)
         everySuspend { messageQueue.enqueue(any()) } returns Unit
@@ -78,7 +85,33 @@ class SendMessageUseCaseTest {
                 homoglyphEncodingPrefs = appPreferences.homoglyph,
                 messageQueue = messageQueue,
                 analytics = analytics,
+                radioConfigRepository = radioConfigRepository,
             )
+    }
+
+    @Test
+    fun `VIP enqueue saves display text rather than compressed payload`() = runTest {
+        radioConfigRepository.replaceAllSettings(
+            listOf(ChannelSettings.Builder().build(), ChannelSettings.Builder().also { it.name = "VIP" }.build()),
+        )
+        val text = "https://files.catbox.moe/photo.jpg"
+        useCase(text, "1${NodeAddress.ID_BROADCAST}", null)
+        verifySuspend {
+            packetRepository.savePacket(any(), any(), matches { it.text == text }, any(), any(), any())
+        }
+        verifySuspend { messageQueue.enqueue(PersistedPacketId(myNodeNum = 1, uuid = 10L)) }
+    }
+
+    @Test
+    fun `oversized VIP message is not saved or queued and never falls back to plaintext`() = runTest {
+        radioConfigRepository.replaceAllSettings(
+            listOf(ChannelSettings.Builder().build(), ChannelSettings.Builder().also { it.name = "VIP" }.build()),
+        )
+        val random = Random(9)
+        val text = CharArray(1000) { random.nextInt(33, 127).toChar() }.concatToString()
+        assertFailsWith<VipMessageTooLongException> { useCase(text, "1${NodeAddress.ID_BROADCAST}", null) }
+        verifySuspend(VerifyMode.exactly(0)) { packetRepository.savePacket(any(), any(), any(), any(), any(), any()) }
+        verifySuspend(VerifyMode.exactly(0)) { messageQueue.enqueue(any()) }
     }
 
     @Test

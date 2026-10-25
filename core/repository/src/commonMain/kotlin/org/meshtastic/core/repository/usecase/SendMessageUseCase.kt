@@ -18,6 +18,9 @@ package org.meshtastic.core.repository.usecase
 
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import org.meshtastic.core.common.util.HomoglyphCharacterStringTransformer
 import org.meshtastic.core.common.util.nowMillis
 import org.meshtastic.core.model.Capabilities
@@ -26,11 +29,13 @@ import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.MessageStatus
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
+import org.meshtastic.core.model.util.VipBrotli
 import org.meshtastic.core.repository.HomoglyphPrefs
 import org.meshtastic.core.repository.MessageQueue
 import org.meshtastic.core.repository.NodeRepository
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PlatformAnalytics
+import org.meshtastic.core.repository.RadioConfigRepository
 import org.meshtastic.core.repository.RadioController
 import org.meshtastic.proto.Config
 import kotlin.random.Random
@@ -82,6 +87,7 @@ class SendMessageUseCaseImpl(
     private val homoglyphEncodingPrefs: HomoglyphPrefs,
     private val messageQueue: MessageQueue,
     private val analytics: PlatformAnalytics,
+    private val radioConfigRepository: RadioConfigRepository,
 ) : SendMessageUseCase {
 
     /**
@@ -125,6 +131,7 @@ class SendMessageUseCaseImpl(
                 status = MessageStatus.QUEUED
             }
 
+        validateVipPayload(packet)
         try {
             // Write to the DB to immediately reflect the queued state on the UI
             val persistedId =
@@ -151,6 +158,11 @@ class SendMessageUseCaseImpl(
         }
 
         return SendMessageOutcome.Queued(packetId)
+    }
+
+    private suspend fun validateVipPayload(packet: DataPacket) {
+        val channels = radioConfigRepository.channelSetFlow.first()
+        withContext(Dispatchers.Default) { VipBrotli.transportPayload(packet, channels) }
     }
 
     // Direct message side-effects: share the contact's public key (PKI) or favorite the node (legacy) before sending
@@ -187,6 +199,7 @@ class SendMessageUseCaseImpl(
         // Side effects run only once the repository has found the row, so a missing message touches nothing.
         val requeued =
             packetRepository.resendMessage(uuid, packetId) {
+                packetRepository.getPacketByPersistedId(it)?.let { packet -> validateVipPayload(packet) }
                 sendDirectMessageSideEffects(
                     parsedKey.channelOrNull,
                     parsedKey.addressString,

@@ -1,4 +1,6 @@
 [versions]
+kompressor = "0.5.0"
+brotli-native = "1.2.1"
 xmlutil = "1.0.2.1"
 
 # Android
@@ -120,6 +122,10 @@ develocity = "4.6.1"
 
 
 [libraries]
+kompressor-brotli = { module = "com.ensody.kompressor:kompressor-brotli--nativelib", version.ref = "kompressor" }
+brotli-common = { module = "com.ensody.nativebuilds:brotli-libbrotlicommon", version.ref = "brotli-native" }
+brotli-encoder = { module = "com.ensody.nativebuilds:brotli-libbrotlienc", version.ref = "brotli-native" }
+brotli-decoder = { module = "com.ensody.nativebuilds:brotli-libbrotlidec", version.ref = "brotli-native" }
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 xmlutil-core = { module = "io.github.pdvrieze.xmlutil:core", version.ref = "xmlutil" }

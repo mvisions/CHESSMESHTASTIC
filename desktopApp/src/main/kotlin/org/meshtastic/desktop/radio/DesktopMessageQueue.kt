@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.MessageStatus
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.MessageQueue
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PersistedPacketId
@@ -61,6 +62,11 @@ class DesktopMessageQueue(
 
             try {
                 radioController.sendMessage(claimed.packet)
+            } catch (e: VipMessageTooLongException) {
+                Logger.w(e) { "VIP packet ${claimed.packet.id} cannot fit the radio transport" }
+                claimed.packet.status = MessageStatus.ERROR
+                claimed.packet.errorMessage = e.message
+                packetRepository.update(claimed.packet)
             } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 Logger.w(e) { "Failed to send packet ${claimed.packet.id}, re-queuing" }
                 packetRepository.rollbackEnroutePacket(claimed.id)

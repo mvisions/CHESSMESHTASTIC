@@ -14,13 +14,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-@file:Suppress("TooManyFunctions")
+@file:Suppress("TooManyFunctions", "MatchingDeclarationName")
 
 package org.meshtastic.core.ui.util
 
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.StringResource
 import org.meshtastic.core.common.util.CommonUri
+
+enum class MediaCaptureType {
+    PHOTO,
+    VIDEO,
+}
 
 /** Returns a function to open the platform's NFC settings. */
 @Composable expect fun rememberOpenNfcSettings(): () -> Unit
@@ -63,6 +68,9 @@ expect fun rememberSaveFileLauncher(
 
 /** Returns a launcher that lets the user pick a single photo or video. The callback receives the selected URI. */
 @Composable expect fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit
+
+/** Returns a camera launcher on platforms that support capturing media. */
+@Composable expect fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): ((MediaCaptureType) -> Unit)?
 
 /**
  * Returns a launcher that prompts the user to pick a *directory*. The callback receives a tree URI, or `null` if the

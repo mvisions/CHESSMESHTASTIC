@@ -18,6 +18,7 @@ package org.meshtastic.feature.messaging.media
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -38,14 +39,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -70,6 +77,7 @@ private val PREVIEW_MAX_HEIGHT = 320.dp
 private val PREVIEW_SHAPE = RoundedCornerShape(12.dp)
 private const val VIDEO_ASPECT_RATIO = 16f / 9f
 private const val SCRIM_ALPHA = 0.55f
+private const val MAX_PHOTO_ZOOM = 5f
 
 /**
  * Inline preview for a photo, video or voice-message link. Reports through [onLoadFailure] when the photo could not be
@@ -78,7 +86,7 @@ private const val SCRIM_ALPHA = 0.55f
  */
 @Composable
 fun MediaPreview(link: MediaLink, onLoadFailure: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    var fullScreen by remember(link.url) { mutableStateOf(false) }
+    var fullScreen by rememberSaveable(link.url) { mutableStateOf(false) }
     when (link.kind) {
         MediaLink.Kind.IMAGE -> ImagePreview(link.url, onLoadFailure, { fullScreen = true }, modifier = modifier)
         MediaLink.Kind.VIDEO -> VideoPreview(link.url, onClick = { fullScreen = true }, modifier = modifier)
@@ -196,6 +204,8 @@ private fun ReportTextButton(mediaUrl: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun FullScreenMediaDialog(link: MediaLink, onDismiss: () -> Unit) {
+    var photoScale by rememberSaveable(link.url) { mutableFloatStateOf(1f) }
+    var photoOffset by remember(link.url) { mutableStateOf(Offset.Zero) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             when (link.kind) {
@@ -204,7 +214,35 @@ private fun FullScreenMediaDialog(link: MediaLink, onDismiss: () -> Unit) {
                         model = link.url,
                         contentDescription = stringResource(Res.string.media_image_description),
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier =
+                        Modifier.fillMaxSize()
+                            .onSizeChanged { size ->
+                                photoOffset =
+                                    photoOffset.clampedFor(photoScale, size.width.toFloat(), size.height.toFloat())
+                            }
+                            .pointerInput(link.url) {
+                                detectTransformGestures { centroid, pan, zoom, _ ->
+                                    val previousScale = photoScale
+                                    val newScale = (previousScale * zoom).coerceIn(1f, MAX_PHOTO_ZOOM)
+                                    val centroidFromCenter = centroid - Offset(size.width / 2f, size.height / 2f)
+                                    val nextOffset =
+                                        if (newScale == 1f) {
+                                            Offset.Zero
+                                        } else {
+                                            (photoOffset + centroidFromCenter) * (newScale / previousScale) -
+                                                centroidFromCenter + pan
+                                        }
+                                    photoScale = newScale
+                                    photoOffset =
+                                        nextOffset.clampedFor(newScale, size.width.toFloat(), size.height.toFloat())
+                                }
+                            }
+                            .graphicsLayer {
+                                scaleX = photoScale
+                                scaleY = photoScale
+                                translationX = photoOffset.x
+                                translationY = photoOffset.y
+                            },
                     )
 
                 MediaLink.Kind.VIDEO -> VideoPlayer(url = link.url, modifier = Modifier.fillMaxSize())
@@ -212,16 +250,6 @@ private fun FullScreenMediaDialog(link: MediaLink, onDismiss: () -> Unit) {
                 // Voice messages play inline and never open full screen.
                 MediaLink.Kind.AUDIO -> Unit
             }
-            // Drawn above the media so a tap anywhere returns to the chat, even over the platform video view.
-            Box(
-                Modifier.fillMaxSize()
-                    .clickable(
-                        interactionSource = null,
-                        indication = null,
-                        onClickLabel = stringResource(Res.string.close),
-                        onClick = onDismiss,
-                    ),
-            )
             ReportTextButton(
                 mediaUrl = link.url,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp),
@@ -239,6 +267,13 @@ private fun FullScreenMediaDialog(link: MediaLink, onDismiss: () -> Unit) {
             }
         }
     }
+}
+
+private fun Offset.clampedFor(scale: Float, width: Float, height: Float): Offset {
+    if (scale <= 1f) return Offset.Zero
+    val maxX = width * (scale - 1f) / 2f
+    val maxY = height * (scale - 1f) / 2f
+    return Offset(x.coerceIn(-maxX, maxX), y.coerceIn(-maxY, maxY))
 }
 
 /**

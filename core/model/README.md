@@ -16,6 +16,11 @@ across Android, JVM, and iOS.
 - **`DeviceHardware`**: Represents supported Meshtastic hardware devices and their capabilities.
 - **`Channel`**: Represents a mesh channel configuration.
 - **`util/`**: Meshtastic URL handling (`ChannelSet`, `SharedContact`, `dispatchMeshtasticUri`), `UnitConversions`, and proto extension helpers.
+- **`VipBrotli`**: Versioned, bounded Brotli quality-11 chat payload codec for `VIP` broadcasts.
+  Uses a bounded JNI bridge from `:core:brotli` on Android and Kompressor on JVM and Native.
+  Does not encrypt messages. The Android library is built from checksum-pinned upstream Brotli 1.2.1
+  using NDK 28.2.13676358 and CMake 3.22.1, with 16 KB ELF alignment for all four Android ABIs.
+  The first native build downloads the verified upstream source archive.
 
 The module `api`-exports the `org.meshtastic:protobufs` artifact and the TAKPacket-SDK (with the SDK's own transitive protobufs excluded), so consumers get both without declaring them.
 

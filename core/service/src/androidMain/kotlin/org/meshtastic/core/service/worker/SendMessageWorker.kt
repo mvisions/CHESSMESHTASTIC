@@ -19,10 +19,12 @@ package org.meshtastic.core.service.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
 import org.koin.android.annotation.KoinWorker
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.MessageStatus
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PersistedPacket
 import org.meshtastic.core.repository.PersistedPacketId
@@ -59,6 +61,12 @@ class SendMessageWorker(
         return try {
             radioController.sendMessage(claimed.packet)
             Result.success()
+        } catch (e: VipMessageTooLongException) {
+            Logger.w(e) { "VIP packet ${claimed.packet.id} cannot fit the radio transport" }
+            claimed.packet.status = MessageStatus.ERROR
+            claimed.packet.errorMessage = e.message
+            packetRepository.update(claimed.packet)
+            Result.failure()
         } catch (e: Exception) {
             packetRepository.rollbackEnroutePacket(claimed.id)
             if (e is CancellationException) throw e

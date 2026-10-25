@@ -45,11 +45,13 @@ interface MeshDataHandler {
      * @param dataPacket The data packet to remember.
      * @param myNodeNum The local node number.
      * @param updateNotification Whether to trigger a notification for this packet.
+     * @param isLocalSend True only for the already-readable local copy after sending, not received/history packets.
      */
     fun rememberDataPacket(
         dataPacket: DataPacket,
         myNodeNum: Int,
         updateNotification: Boolean = true,
         session: RadioSessionContext? = null,
+        isLocalSend: Boolean = false,
     )
 }

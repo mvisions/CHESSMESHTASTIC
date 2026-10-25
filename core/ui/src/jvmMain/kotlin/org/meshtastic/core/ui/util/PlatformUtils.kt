@@ -112,6 +112,9 @@ actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> U
     return { openFile("*/*") }
 }
 
+@Composable
+actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): ((MediaCaptureType) -> Unit)? = null
+
 /** JVM — Opens a native dialog to pick a directory. */
 @Composable
 actual fun rememberOpenDocumentTreeLauncher(onTreeUriSelect: (CommonUri?) -> Unit): () -> Unit = {

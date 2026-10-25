@@ -41,6 +41,8 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -105,6 +107,9 @@ import org.meshtastic.core.model.util.getChannel
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.archived_channel_read_only
 import org.meshtastic.core.resources.media_attach
+import org.meshtastic.core.resources.media_choose_existing
+import org.meshtastic.core.resources.media_record_video
+import org.meshtastic.core.resources.media_take_photo
 import org.meshtastic.core.resources.media_uploading
 import org.meshtastic.core.resources.send
 import org.meshtastic.core.resources.type_a_message
@@ -119,8 +124,10 @@ import org.meshtastic.core.ui.icon.MeshtasticIcons
 import org.meshtastic.core.ui.icon.Mic
 import org.meshtastic.core.ui.icon.Send
 import org.meshtastic.core.ui.theme.AppTheme
+import org.meshtastic.core.ui.util.MediaCaptureType
 import org.meshtastic.core.ui.util.createClipEntry
 import org.meshtastic.core.ui.util.isFromSoftKeyboard
+import org.meshtastic.core.ui.util.rememberCaptureMediaLauncher
 import org.meshtastic.core.ui.util.rememberPickMediaLauncher
 import org.meshtastic.feature.messaging.component.ActionModeTopBar
 import org.meshtastic.feature.messaging.component.DeleteMessageDialog
@@ -194,6 +201,12 @@ fun MessageScreen(
     // UI State managed within this Composable
     var replyingToPacketId by rememberSaveable { mutableStateOf<Int?>(null) }
     val pickMedia = rememberPickMediaLauncher { uri ->
+        if (uri != null) {
+            mediaUploadViewModel.uploadAndSend(uri, contactKey, replyingToPacketId)
+            replyingToPacketId = null
+        }
+    }
+    val captureMedia = rememberCaptureMediaLauncher { uri ->
         if (uri != null) {
             mediaUploadViewModel.uploadAndSend(uri, contactKey, replyingToPacketId)
             replyingToPacketId = null
@@ -534,6 +547,14 @@ fun MessageScreen(
                         textFieldState = messageInputState,
                         mentionCandidates = mentionCandidates,
                         onAttachMedia = pickMedia.takeIf { mediaLinksEnabled },
+                        onCapturePhoto =
+                        captureMedia
+                            ?.let { capture -> { capture(MediaCaptureType.PHOTO) } }
+                            .takeIf { mediaLinksEnabled },
+                        onRecordVideo =
+                        captureMedia
+                            ?.let { capture -> { capture(MediaCaptureType.VIDEO) } }
+                            .takeIf { mediaLinksEnabled },
                         voiceRecorder = voiceRecorder.takeIf { mediaLinksEnabled },
                         isUploadingMedia = isUploadingMedia,
                         onSendMessage = {
@@ -850,6 +871,8 @@ internal fun RetiredChannelNotice(modifier: Modifier = Modifier) {
  * @param maxByteSize The maximum allowed size of the message in bytes.
  * @param onSendMessage Callback invoked when the send button is pressed or send IME action is triggered.
  * @param onAttachMedia Opens the photo/video picker; null hides the attach button.
+ * @param onCapturePhoto Opens the camera to capture a photo; null hides camera capture options.
+ * @param onRecordVideo Opens the camera to record a video; null hides camera capture options.
  * @param voiceRecorder Records voice messages from the microphone button shown while the field is empty; null hides it.
  * @param isUploadingMedia Shows upload progress in place of the attach button.
  */
@@ -863,10 +886,13 @@ internal fun MessageInput(
     modifier: Modifier = Modifier,
     maxByteSize: Int = MESSAGE_CHARACTER_LIMIT_BYTES,
     onAttachMedia: (() -> Unit)? = null,
+    onCapturePhoto: (() -> Unit)? = null,
+    onRecordVideo: (() -> Unit)? = null,
     voiceRecorder: VoiceRecorder? = null,
     isUploadingMedia: Boolean = false,
     onSendMessage: () -> Unit,
 ) {
+    var showMediaMenu by rememberSaveable { mutableStateOf(false) }
     val currentTextRaw = textFieldState.text.toString()
 
     val currentText =
@@ -994,11 +1020,50 @@ internal fun MessageInput(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        IconButton(onClick = attach, enabled = isEnabled) {
-                            Icon(
-                                imageVector = MeshtasticIcons.AttachFile,
-                                contentDescription = stringResource(Res.string.media_attach),
-                            )
+                        Box {
+                            IconButton(
+                                onClick = {
+                                    if (onCapturePhoto != null && onRecordVideo != null) {
+                                        showMediaMenu = true
+                                    } else {
+                                        attach()
+                                    }
+                                },
+                                enabled = isEnabled,
+                            ) {
+                                Icon(
+                                    imageVector = MeshtasticIcons.AttachFile,
+                                    contentDescription = stringResource(Res.string.media_attach),
+                                )
+                            }
+                            if (onCapturePhoto != null && onRecordVideo != null) {
+                                DropdownMenu(
+                                    expanded = showMediaMenu,
+                                    onDismissRequest = { showMediaMenu = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.media_choose_existing)) },
+                                        onClick = {
+                                            showMediaMenu = false
+                                            attach()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.media_take_photo)) },
+                                        onClick = {
+                                            showMediaMenu = false
+                                            onCapturePhoto()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.media_record_video)) },
+                                        onClick = {
+                                            showMediaMenu = false
+                                            onRecordVideo()
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

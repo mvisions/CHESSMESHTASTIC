@@ -36,6 +36,7 @@ import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.MessageStatus
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.PersistedPacket
 import org.meshtastic.core.repository.PersistedPacketId
@@ -102,6 +103,23 @@ class DesktopMessageQueueTest {
 
         assertEquals(emptyList(), radio.sentPackets)
         verifySuspend { repository.rollbackEnroutePacket(id) }
+    }
+
+    @Test
+    fun `oversized VIP payload fails permanently without requeuing`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val repository = mock<PacketRepository>(MockMode.autofill)
+        val radio = connectedRadio().apply { onSendMessage = { throw VipMessageTooLongException() } }
+        val id = PersistedPacketId(myNodeNum = 42, uuid = 99L)
+        val packet = queuedPacket()
+        everySuspend { repository.claimQueuedPacket(id) } returns PersistedPacket(id, packet)
+
+        queue(repository, radio, dispatcher).enqueue(id)
+        advanceUntilIdle()
+
+        assertEquals(MessageStatus.ERROR, packet.status)
+        verifySuspend { repository.update(packet) }
+        verifySuspend(mode = VerifyMode.exactly(0)) { repository.rollbackEnroutePacket(any()) }
     }
 
     @Test

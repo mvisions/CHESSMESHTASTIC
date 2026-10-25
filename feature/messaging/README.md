@@ -27,10 +27,26 @@ Uses `HomoglyphCharacterStringTransformer` (from `:core:common`) to optionally r
 ## Features
 - **Channel Chat**: Group communication on public or private channels.
 - **Direct Messaging**: One-on-one encrypted communication between nodes.
+- **Photo and video sharing**: Pick existing media or capture a photo/video with the Android camera directly from the composer.
+- **Fullscreen photos**: Pinch to zoom (1-5x), pan, and keep the viewer open when rotating the phone.
 - **Message Reactions**: Support for reacting to messages with emojis.
 - **Markdown formatting**: `FormattingToolbar` inserts or toggles bold, italic, strikethrough, code and link markup.
 - **Delivery Status**: `MessageStatusIcon` shows each `MessageStatus`: queued, en route, delivered (ACK), error (NAK), and the SF++ chain routing and confirmed states.
 - **Background send** (Android): `WorkManagerMessageQueue` hands queued messages to WorkManager for transmission.
+
+### VIP Brotli transport
+
+Broadcast text, replies, reactions and media links on a channel named exactly `VIP` use Brotli quality 11.
+The radio payload is UTF-8 `VIPB1:` followed by standard Base64 of the Brotli stream (encoder window 16).
+Outgoing history stays readable; incoming packets, including store-and-forward history, are decoded before
+filtering, persistence and notifications, so the existing image/video/audio URL previews work unchanged.
+New plain or malformed VIP messages are dropped with a diagnostic log; existing history is not rewritten.
+Other channel names and direct messages keep their existing format.
+
+This is compression, **not encryption**. The official app does not decode this custom format, but anyone
+with access to the payload can decompress it. Uploaded files remain unchanged on the temporary host.
+The full encoded protobuf must fit one radio packet; oversized messages fail explicitly, without truncation,
+fragmentation or plaintext fallback. Decoded text is limited to 4096 UTF-8 bytes.
 
 ## Testing
 

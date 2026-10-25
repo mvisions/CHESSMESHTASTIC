@@ -22,6 +22,8 @@ The `:core:ui` module contains Compose Multiplatform components, themes, and uti
 - **`AppTheme`** (`theme/`): The Material 3 theme, colors and typography.
 - **`AlertManager`** / **`SnackbarManager`** (`util/`): App-wide alert and snackbar queues.
 - **`Local*` composition locals** (`util/`): Platform capabilities the hosts provide to shared code, such as the barcode scanner, NFC, and map views.
+- **`VipChannelPrompt`**: Android's post-connection opt-in to add `VIP` as a secondary channel with PSK `VP==`. It never replaces an existing channel or changes LoRa settings; dismissal lasts for the current connection. Managed devices are excluded.
+  `VP==` decodes to the one-byte key marker `0x54`; a Base64 editor may display the equivalent canonical spelling `VA==`.
 
 ### 4. Preferences
 Standardized Material 3 preference components for settings screens:
@@ -32,6 +34,7 @@ Standardized Material 3 preference components for settings screens:
 - `EditTextPreference`
 
 ### 5. Utilities
+- **Android media capture**: Requests camera permission when necessary, delegates capture to the camera app, and shares only temporary capture files through a restricted FileProvider.
 - **`util/ModifierExtensions.kt`**: `Modifier.thenIf`, a conditional modifier.
 - **`util/ProtoExtensions.kt`**: Helpers over protobuf models: position time formatting, `MeshPacket.toPosition`, and channel-set import and diffing.
 

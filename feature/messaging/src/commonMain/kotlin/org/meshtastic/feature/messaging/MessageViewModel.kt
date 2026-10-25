@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -45,6 +46,7 @@ import org.meshtastic.core.model.ContactSettings
 import org.meshtastic.core.model.Message
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
+import org.meshtastic.core.model.util.VipMessageTooLongException
 import org.meshtastic.core.repository.ActiveConversationTracker
 import org.meshtastic.core.repository.ConnectionStateProvider
 import org.meshtastic.core.repository.CustomEmojiPrefs
@@ -63,6 +65,7 @@ import org.meshtastic.core.resources.UiText
 import org.meshtastic.core.resources.translation_failed
 import org.meshtastic.core.resources.translation_model_download_failed
 import org.meshtastic.core.resources.translation_not_required
+import org.meshtastic.core.resources.vip_message_too_long
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.errorEventFlow
 import org.meshtastic.core.ui.viewmodel.safeLaunch
@@ -396,7 +399,7 @@ class MessageViewModel(
      */
     fun sendMessage(str: String, contactKey: String = "0${NodeAddress.ID_BROADCAST}", replyId: Int? = null) {
         safeLaunch(errorEvents = sendErrorEvents, tag = "sendMessage") {
-            sendMessageUseCase.invoke(str, contactKey, replyId)
+            withVipSizeNotice { sendMessageUseCase.invoke(str, contactKey, replyId) }
         }
     }
 
@@ -412,7 +415,16 @@ class MessageViewModel(
      */
     fun resendMessage(uuid: Long, contactKey: String) {
         safeLaunch(errorEvents = sendErrorEvents, tag = "resendMessage") {
-            sendMessageUseCase.resend(uuid, contactKey)
+            withVipSizeNotice { sendMessageUseCase.resend(uuid, contactKey) }
+        }
+    }
+
+    private suspend fun withVipSizeNotice(send: suspend () -> Unit) {
+        try {
+            send()
+        } catch (e: VipMessageTooLongException) {
+            Logger.w(e) { "VIP message exceeds the radio packet limit" }
+            sendErrorEvents.emit(UiText.Resource(Res.string.vip_message_too_long))
         }
     }
 
