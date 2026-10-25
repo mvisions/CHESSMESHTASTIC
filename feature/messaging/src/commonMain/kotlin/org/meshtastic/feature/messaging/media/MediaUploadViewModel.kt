@@ -34,6 +34,7 @@ import org.meshtastic.core.resources.media_upload_failed
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.safeLaunch
 import org.meshtastic.feature.messaging.MessagingUiTextResolver
+import org.meshtastic.feature.messaging.component.MESSAGE_CHARACTER_LIMIT_BYTES
 
 /** Uploads a picked photo/video to the temporary file host and sends the resulting link over the mesh. */
 @KoinViewModel
@@ -59,7 +60,8 @@ class MediaUploadViewModel(
                     return@safeLaunch
                 }
                 val url = upload(uri, "meshtastic_$nowMillis.$extension", mimeType)
-                if (url == null) {
+                // A link must fit one mesh text message just like typed text; never send a truncated URL.
+                if (url == null || !fitsInOneMessage(url)) {
                     showMessage(UiText.Resource(Res.string.media_upload_failed))
                 } else {
                     sendMessageUseCase(url, contactKey, replyId)
@@ -87,3 +89,6 @@ class MediaUploadViewModel(
         snackbarManager.showSnackbar(MessagingUiTextResolver.resolve(text))
     }
 }
+
+/** Whether [url] fits in a single mesh text message under the same byte limit the composer enforces. */
+internal fun fitsInOneMessage(url: String): Boolean = url.encodeToByteArray().size <= MESSAGE_CHARACTER_LIMIT_BYTES

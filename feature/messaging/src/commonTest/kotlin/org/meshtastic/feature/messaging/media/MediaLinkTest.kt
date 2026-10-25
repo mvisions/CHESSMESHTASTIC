@@ -68,4 +68,10 @@ class MediaLinkTest {
         assertEquals("video/mp4", mimeTypeFromName("clip.mp4"))
         assertNull(mimeTypeFromName("notes.txt"))
     }
+
+    @Test
+    fun litterboxLinksFitInOneMessage() {
+        assertTrue(fitsInOneMessage("https://litter.catbox.moe/abc123.jpg"))
+        assertFalse(fitsInOneMessage("https://example.com/" + "a".repeat(200) + ".jpg"))
+    }
 }
