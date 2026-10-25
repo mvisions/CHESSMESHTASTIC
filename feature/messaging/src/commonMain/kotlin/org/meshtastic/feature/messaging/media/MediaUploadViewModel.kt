@@ -17,6 +17,7 @@
 package org.meshtastic.feature.messaging.media
 
 import androidx.lifecycle.ViewModel
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,12 +26,18 @@ import org.koin.core.annotation.KoinViewModel
 import org.meshtastic.core.common.util.CommonUri
 import org.meshtastic.core.common.util.nowMillis
 import org.meshtastic.core.repository.FileService
+import org.meshtastic.core.repository.MediaUploadHost
 import org.meshtastic.core.repository.MediaUploader
 import org.meshtastic.core.repository.usecase.SendMessageUseCase
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.UiText
+import org.meshtastic.core.resources.cancel
+import org.meshtastic.core.resources.media_backup_title
+import org.meshtastic.core.resources.media_backup_uguu
+import org.meshtastic.core.resources.media_backup_upload
 import org.meshtastic.core.resources.media_unsupported_type
 import org.meshtastic.core.resources.media_upload_failed
+import org.meshtastic.core.ui.util.AlertManager
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.safeLaunch
 import org.meshtastic.feature.messaging.MessagingUiTextResolver
@@ -46,10 +53,23 @@ class MediaUploadViewModel(
     private val mediaUploader: MediaUploader,
     private val sendMessageUseCase: SendMessageUseCase,
     private val snackbarManager: SnackbarManager,
+    private val alertManager: AlertManager,
 ) : ViewModel() {
 
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
+
+    private data class UploadRequest(
+        val uri: CommonUri,
+        val contactKey: String,
+        val replyId: Int?,
+        val durationMillis: Long?,
+    )
+
+    private data class UploadAttempt(val url: String?, val readable: Boolean)
+
+    private var pendingBackup: UploadRequest? = null
+    private var backupAlert: AlertManager.AlertData? = null
 
     /**
      * Uploads [uri] and sends its link. [durationMillis] (voice messages) is appended to the link as a `#d=` hint so
@@ -58,41 +78,87 @@ class MediaUploadViewModel(
     fun uploadAndSend(uri: CommonUri, contactKey: String, replyId: Int?, durationMillis: Long? = null) {
         if (_isUploading.value) return
         _isUploading.value = true
+        uploadAndSend(UploadRequest(uri, contactKey, replyId, durationMillis), MediaUploadHost.LITTERBOX)
+    }
+
+    private fun uploadAndSend(request: UploadRequest, host: MediaUploadHost) {
         safeLaunch(tag = "uploadMedia") {
             try {
-                val mimeType = fileService.mimeType(uri) ?: mimeTypeFromName(uri.toString())
+                val mimeType = fileService.mimeType(request.uri) ?: mimeTypeFromName(request.uri.toString())
                 val extension = mediaExtensionFor(mimeType)
                 if (mimeType == null || extension == null) {
                     showMessage(UiText.Resource(Res.string.media_unsupported_type))
                     return@safeLaunch
                 }
+                val attempt = upload(request.uri, "meshtastic_$nowMillis.$extension", mimeType, host)
                 val url =
-                    upload(uri, "meshtastic_$nowMillis.$extension", mimeType)?.let { uploaded ->
-                        durationMillis?.let { withDurationHint(uploaded, it) } ?: uploaded
+                    attempt.url?.let { uploaded ->
+                        request.durationMillis?.let { withDurationHint(uploaded, it) } ?: uploaded
                     }
                 // A link must fit one mesh text message just like typed text; never send a truncated URL.
                 if (url == null || !fitsInOneMessage(url)) {
-                    showMessage(UiText.Resource(Res.string.media_upload_failed))
+                    if (host == MediaUploadHost.LITTERBOX && attempt.readable) {
+                        offerBackup(request)
+                    } else {
+                        showMessage(UiText.Resource(Res.string.media_upload_failed))
+                    }
                 } else {
-                    sendMessageUseCase(url, contactKey, replyId)
+                    sendMessageUseCase(url, request.contactKey, request.replyId)
                 }
             } finally {
-                _isUploading.value = false
+                if (pendingBackup == null) _isUploading.value = false
             }
         }
     }
 
+    private fun offerBackup(request: UploadRequest) {
+        pendingBackup = request
+        alertManager.showAlert(
+            titleRes = Res.string.media_backup_title,
+            messageRes = Res.string.media_backup_uguu,
+            confirmTextRes = Res.string.media_backup_upload,
+            dismissTextRes = Res.string.cancel,
+            onConfirm = {
+                pendingBackup = null
+                backupAlert = null
+                uploadAndSend(request, MediaUploadHost.UGUU)
+            },
+            onDismiss = {
+                pendingBackup = null
+                backupAlert = null
+                _isUploading.value = false
+            },
+        )
+        backupAlert = alertManager.currentAlert.value
+    }
+
+    override fun onCleared() {
+        if (backupAlert != null && alertManager.currentAlert.value === backupAlert) alertManager.dismissAlert()
+        super.onCleared()
+    }
+
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun upload(uri: CommonUri, fileName: String, mimeType: String): String? {
+    private suspend fun upload(
+        uri: CommonUri,
+        fileName: String,
+        mimeType: String,
+        host: MediaUploadHost,
+    ): UploadAttempt {
         var url: String? = null
+        var readable = false
         try {
-            fileService.read(uri) { source -> url = mediaUploader.upload(source, fileName, mimeType) }
+            val read =
+                fileService.read(uri) { source ->
+                    readable = true
+                    url = mediaUploader.upload(source, fileName, mimeType, host)
+                }
+            if (!read) Logger.w { "Media file read or upload failed ($host)" }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            return null
+        } catch (e: Exception) {
+            Logger.w { "Media upload failed ($host): ${e::class.simpleName}" }
         }
-        return url
+        return UploadAttempt(url, readable)
     }
 
     private suspend fun showMessage(text: UiText) {

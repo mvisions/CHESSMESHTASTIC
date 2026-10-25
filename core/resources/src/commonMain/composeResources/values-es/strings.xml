@@ -777,9 +777,12 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="media_report">Denunciar</string>
     <string name="media_report_description">Denunciar esta foto o vídeo al sitio que lo aloja (p. ej. contenido con menores o ilegal)</string>
     <string name="media_links_setting">Enlaces de fotos, vídeos y voz</string>
-    <string name="media_links_setting_summary">Muestra las fotos, vídeos y mensajes de voz enlazados en los chats, permite adjuntarlos y grabar mensajes de voz. Los archivos se suben de forma pública a Litterbox (catbox.moe) durante 24 horas, y al cargar las vistas previas el servidor ve tu dirección IP.</string>
+    <string name="media_links_setting_summary">Muestra fotos, vídeos y voz en los chats y permite adjuntarlos y grabar voz. Las subidas son públicas: Litterbox conserva los archivos 24 horas; el respaldo opcional Uguu los conserva 3 horas y requiere tu confirmación. Al cargar contenido, su servidor ve tu dirección IP.</string>
     <string name="media_unsupported_type">Solo se pueden compartir fotos y vídeos</string>
-    <string name="media_upload_failed">No se pudo subir el archivo. Comprueba tu conexión a internet.</string>
+    <string name="media_upload_failed">No se pudo subir el archivo. El servicio puede no estar disponible, el archivo puede superar sus límites o puede haber fallado tu conexión. No se envió ningún enlace.</string>
+    <string name="media_backup_title">Falló la subida: ¿usar un respaldo?</string>
+    <string name="media_backup_uguu">Litterbox no devolvió un enlace válido. ¿Subir este archivo a Uguu (uguu.se)? El archivo será público y se borrará a las 3 horas, no a las 24 horas. Tamaño máximo: 128 MiB. Uguu recibirá el archivo y tu dirección IP. Por la malla solo se enviará el enlace resultante.</string>
+    <string name="media_backup_upload">Subir a Uguu</string>
     <string name="media_uploading">Subiendo archivo…</string>
     <string name="voice_record">Grabar mensaje de voz</string>
     <string name="voice_recording">Grabando…</string>

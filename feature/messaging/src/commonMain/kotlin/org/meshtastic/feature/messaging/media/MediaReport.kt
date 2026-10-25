@@ -23,6 +23,9 @@ import androidx.compose.ui.platform.LocalUriHandler
 private const val CATBOX_DOMAIN = "catbox.moe"
 private const val CATBOX_ABUSE_EMAIL = "admin@catbox.moe"
 private const val CATBOX_CONTACT_URL = "https://catbox.moe/contact.php"
+private const val UGUU_DOMAIN = "uguu.se"
+private const val UGUU_ABUSE_EMAIL = "abuse@pomf.se"
+private const val UGUU_CONTACT_URL = "https://uguu.se/faq.html"
 private const val HEX_DIGITS = "0123456789ABCDEF"
 private const val NIBBLE_BITS = 4
 private const val NIBBLE_MASK = 0x0F
@@ -38,14 +41,18 @@ data class MediaReportTarget(val primaryUri: String, val fallbackUri: String?)
 /** Builds the abuse-report destination for the site hosting [mediaUrl], or `null` when the URL has no usable host. */
 fun mediaReportTargetFor(mediaUrl: String): MediaReportTarget? {
     val host = hostOf(mediaUrl) ?: return null
-    return if (host == CATBOX_DOMAIN || host.endsWith(".$CATBOX_DOMAIN")) {
+    val catbox = host == CATBOX_DOMAIN || host.endsWith(".$CATBOX_DOMAIN")
+    val uguu = host == UGUU_DOMAIN || host.endsWith(".$UGUU_DOMAIN")
+    return if (catbox || uguu) {
         val subject = "Abuse report: $mediaUrl"
         val body =
-            "Hello, I would like to report this file because it breaks the Catbox/Litterbox Acceptable Use Policy " +
+            "Hello, I would like to report this file because it breaks the hosting service's rules " +
                 "(e.g. it involves minors or illegal content). Please remove it:\n\n$mediaUrl\n"
         MediaReportTarget(
-            primaryUri = "mailto:$CATBOX_ABUSE_EMAIL?subject=${percentEncode(subject)}&body=${percentEncode(body)}",
-            fallbackUri = CATBOX_CONTACT_URL,
+            primaryUri =
+            "mailto:${if (catbox) CATBOX_ABUSE_EMAIL else UGUU_ABUSE_EMAIL}" +
+                "?subject=${percentEncode(subject)}&body=${percentEncode(body)}",
+            fallbackUri = if (catbox) CATBOX_CONTACT_URL else UGUU_CONTACT_URL,
         )
     } else {
         MediaReportTarget(primaryUri = "https://$host/", fallbackUri = null)

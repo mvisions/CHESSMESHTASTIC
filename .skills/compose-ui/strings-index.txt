@@ -1108,6 +1108,9 @@ match_any
 max
 ### MEDIA ###
 media_attach
+media_backup_title
+media_backup_uguu
+media_backup_upload
 media_image_description
 media_links_setting
 media_links_setting_summary

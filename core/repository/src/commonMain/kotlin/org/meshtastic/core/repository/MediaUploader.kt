@@ -18,14 +18,23 @@ package org.meshtastic.core.repository
 
 import okio.BufferedSource
 
-/**
- * Uploads a photo or video to an anonymous temporary file host so that only a short link has to travel over the mesh.
- */
+/** Uploads media to a temporary file host so that only a short link has to travel over the mesh. */
 interface MediaUploader {
     /**
      * Streams [source] to the host and returns the public download URL.
      *
      * @throws Exception when the host is unreachable or rejects the upload.
      */
-    suspend fun upload(source: BufferedSource, fileName: String, contentType: String): String
+    suspend fun upload(
+        source: BufferedSource,
+        fileName: String,
+        contentType: String,
+        host: MediaUploadHost = MediaUploadHost.LITTERBOX,
+    ): String
+}
+
+/** A backup host must be explicitly authorized before it receives a file. */
+enum class MediaUploadHost {
+    LITTERBOX,
+    UGUU,
 }

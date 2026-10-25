@@ -28,6 +28,7 @@ class MediaReportTest {
         val target = mediaReportTargetFor("https://litter.catbox.moe/abc123.jpg")!!
         assertTrue(target.primaryUri.startsWith("mailto:admin@catbox.moe?subject=Abuse%20report%3A%20https%3A%2F%2F"))
         assertTrue(target.primaryUri.contains("litter.catbox.moe%2Fabc123.jpg"))
+        assertTrue(target.primaryUri.substringAfter("&body=").contains("https%3A%2F%2Flitter.catbox.moe%2Fabc123.jpg"))
         assertEquals("https://catbox.moe/contact.php", target.fallbackUri)
     }
 
@@ -36,6 +37,19 @@ class MediaReportTest {
         val target = mediaReportTargetFor("https://User@Example.com:8443/a/b.mp4?x=1")!!
         assertEquals("https://example.com/", target.primaryUri)
         assertNull(target.fallbackUri)
+    }
+
+    @Test
+    fun uguuLinksHaveTheirOwnReportContact() {
+        val target = mediaReportTargetFor("https://d.uguu.se/test.m4a")!!
+        assertTrue(target.primaryUri.startsWith("mailto:abuse@pomf.se?"))
+        assertTrue(target.primaryUri.contains("d.uguu.se%2Ftest.m4a"))
+        assertTrue(target.primaryUri.substringAfter("&body=").contains("https%3A%2F%2Fd.uguu.se%2Ftest.m4a"))
+        assertEquals("https://uguu.se/faq.html", target.fallbackUri)
+        assertEquals(
+            "https://uguu.se.attacker.test/",
+            mediaReportTargetFor("https://uguu.se.attacker.test/a")?.primaryUri,
+        )
     }
 
     @Test
