@@ -776,9 +776,18 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="media_play_video">Reproducir vídeo</string>
     <string name="media_report">Denunciar</string>
     <string name="media_report_description">Denunciar esta foto o vídeo al sitio que lo aloja (p. ej. contenido con menores o ilegal)</string>
-    <string name="media_links_setting">Enlaces de fotos y vídeos</string>
-    <string name="media_links_setting_summary">Muestra las fotos y vídeos enlazados en los chats y permite adjuntarlos. Los archivos se suben de forma pública a Litterbox (catbox.moe) durante 24 horas, y al cargar las vistas previas el servidor ve tu dirección IP.</string>
+    <string name="media_links_setting">Enlaces de fotos, vídeos y voz</string>
+    <string name="media_links_setting_summary">Muestra las fotos, vídeos y mensajes de voz enlazados en los chats, permite adjuntarlos y grabar mensajes de voz. Los archivos se suben de forma pública a Litterbox (catbox.moe) durante 24 horas, y al cargar las vistas previas el servidor ve tu dirección IP.</string>
     <string name="media_unsupported_type">Solo se pueden compartir fotos y vídeos</string>
     <string name="media_upload_failed">No se pudo subir el archivo. Comprueba tu conexión a internet.</string>
     <string name="media_uploading">Subiendo archivo…</string>
+    <string name="voice_record">Grabar mensaje de voz</string>
+    <string name="voice_recording">Grabando…</string>
+    <string name="voice_send">Detener y enviar mensaje de voz</string>
+    <string name="voice_cancel">Cancelar grabación</string>
+    <string name="voice_play">Reproducir mensaje de voz</string>
+    <string name="voice_pause">Pausar mensaje de voz</string>
+    <string name="voice_speed">Velocidad de reproducción</string>
+    <string name="voice_message">Mensaje de voz</string>
+    <string name="voice_permission_denied">Se necesita permiso de micrófono para grabar mensajes de voz</string>
 </resources>

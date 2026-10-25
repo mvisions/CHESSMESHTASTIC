@@ -36,7 +36,10 @@ import org.meshtastic.core.ui.viewmodel.safeLaunch
 import org.meshtastic.feature.messaging.MessagingUiTextResolver
 import org.meshtastic.feature.messaging.component.MESSAGE_CHARACTER_LIMIT_BYTES
 
-/** Uploads a picked photo/video to the temporary file host and sends the resulting link over the mesh. */
+/**
+ * Uploads a picked photo/video or a recorded voice message to the temporary file host and sends the resulting link over
+ * the mesh.
+ */
 @KoinViewModel
 class MediaUploadViewModel(
     private val fileService: FileService,
@@ -48,7 +51,11 @@ class MediaUploadViewModel(
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
-    fun uploadAndSend(uri: CommonUri, contactKey: String, replyId: Int?) {
+    /**
+     * Uploads [uri] and sends its link. [durationMillis] (voice messages) is appended to the link as a `#d=` hint so
+     * receivers can show the length without downloading.
+     */
+    fun uploadAndSend(uri: CommonUri, contactKey: String, replyId: Int?, durationMillis: Long? = null) {
         if (_isUploading.value) return
         _isUploading.value = true
         safeLaunch(tag = "uploadMedia") {
@@ -59,7 +66,10 @@ class MediaUploadViewModel(
                     showMessage(UiText.Resource(Res.string.media_unsupported_type))
                     return@safeLaunch
                 }
-                val url = upload(uri, "meshtastic_$nowMillis.$extension", mimeType)
+                val url =
+                    upload(uri, "meshtastic_$nowMillis.$extension", mimeType)?.let { uploaded ->
+                        durationMillis?.let { withDurationHint(uploaded, it) } ?: uploaded
+                    }
                 // A link must fit one mesh text message just like typed text; never send a truncated URL.
                 if (url == null || !fitsInOneMessage(url)) {
                     showMessage(UiText.Resource(Res.string.media_upload_failed))

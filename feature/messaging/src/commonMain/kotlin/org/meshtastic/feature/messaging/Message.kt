@@ -109,12 +109,14 @@ import org.meshtastic.core.resources.media_uploading
 import org.meshtastic.core.resources.send
 import org.meshtastic.core.resources.type_a_message
 import org.meshtastic.core.resources.unknown_channel
+import org.meshtastic.core.resources.voice_record
 import org.meshtastic.core.ui.component.InlineStyle
 import org.meshtastic.core.ui.component.ShareContactDialog
 import org.meshtastic.core.ui.component.smartScrollToIndex
 import org.meshtastic.core.ui.icon.AttachFile
 import org.meshtastic.core.ui.icon.History
 import org.meshtastic.core.ui.icon.MeshtasticIcons
+import org.meshtastic.core.ui.icon.Mic
 import org.meshtastic.core.ui.icon.Send
 import org.meshtastic.core.ui.theme.AppTheme
 import org.meshtastic.core.ui.util.createClipEntry
@@ -132,6 +134,9 @@ import org.meshtastic.feature.messaging.component.ReplySnippet
 import org.meshtastic.feature.messaging.component.ScrollToBottomFab
 import org.meshtastic.feature.messaging.component.TranslationModelDownloadDialog
 import org.meshtastic.feature.messaging.media.MediaUploadViewModel
+import org.meshtastic.feature.messaging.media.VoiceRecorder
+import org.meshtastic.feature.messaging.media.VoiceRecordingBar
+import org.meshtastic.feature.messaging.media.rememberVoiceRecorder
 
 private const val ROUNDED_CORNER_PERCENT = 100
 private const val MAX_LINES = 3
@@ -193,6 +198,10 @@ fun MessageScreen(
             mediaUploadViewModel.uploadAndSend(uri, contactKey, replyingToPacketId)
             replyingToPacketId = null
         }
+    }
+    val voiceRecorder = rememberVoiceRecorder { uri, durationMillis ->
+        mediaUploadViewModel.uploadAndSend(uri, contactKey, replyingToPacketId, durationMillis)
+        replyingToPacketId = null
     }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var sharedContact by rememberSaveable { mutableStateOf<Node?>(null) }
@@ -525,6 +534,7 @@ fun MessageScreen(
                         textFieldState = messageInputState,
                         mentionCandidates = mentionCandidates,
                         onAttachMedia = pickMedia.takeIf { mediaLinksEnabled },
+                        voiceRecorder = voiceRecorder.takeIf { mediaLinksEnabled },
                         isUploadingMedia = isUploadingMedia,
                         onSendMessage = {
                             val messageText = messageInputState.text.toString().trim { it.isWhitespace() }
@@ -840,6 +850,7 @@ internal fun RetiredChannelNotice(modifier: Modifier = Modifier) {
  * @param maxByteSize The maximum allowed size of the message in bytes.
  * @param onSendMessage Callback invoked when the send button is pressed or send IME action is triggered.
  * @param onAttachMedia Opens the photo/video picker; null hides the attach button.
+ * @param voiceRecorder Records voice messages from the microphone button shown while the field is empty; null hides it.
  * @param isUploadingMedia Shows upload progress in place of the attach button.
  */
 @Suppress("LongMethod", "CyclomaticComplexMethod") // Due to multiple parts of the OutlinedTextField
@@ -852,6 +863,7 @@ internal fun MessageInput(
     modifier: Modifier = Modifier,
     maxByteSize: Int = MESSAGE_CHARACTER_LIMIT_BYTES,
     onAttachMedia: (() -> Unit)? = null,
+    voiceRecorder: VoiceRecorder? = null,
     isUploadingMedia: Boolean = false,
     onSendMessage: () -> Unit,
 ) {
@@ -907,6 +919,12 @@ internal fun MessageInput(
 
     var isFocused by remember { mutableStateOf(false) }
     val uploadingDescription = stringResource(Res.string.media_uploading)
+
+    if (voiceRecorder?.isRecording == true) {
+        VoiceRecordingBar(recorder = voiceRecorder, modifier = modifier)
+        return
+    }
+    val showMic = voiceRecorder != null && currentText.isEmpty() && !isUploadingMedia
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (mentionActive) {
@@ -986,20 +1004,21 @@ internal fun MessageInput(
                 }
             },
             trailingIcon = {
-                // Colour, not just enablement, carries "this will send" — a greyed-out icon reads as broken rather
-                // than as waiting for input.
-                val sendEnabled = isEnabled && (canSend || mentionActive)
-                IconButton(onClick = onSendAction, enabled = sendEnabled) {
-                    Icon(
-                        imageVector = MeshtasticIcons.Send,
-                        contentDescription = stringResource(Res.string.send),
-                        tint =
-                        if (sendEnabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
+                if (showMic && voiceRecorder != null) {
+                    IconButton(onClick = voiceRecorder::start, enabled = isEnabled) {
+                        Icon(
+                            imageVector = MeshtasticIcons.Mic,
+                            contentDescription = stringResource(Res.string.voice_record),
+                            tint =
+                            if (isEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                } else {
+                    SendButton(enabled = isEnabled && (canSend || mentionActive), onClick = onSendAction)
                 }
             },
         )
@@ -1007,6 +1026,19 @@ internal fun MessageInput(
         if (isEnabled && isFocused && currentText.length >= FORMATTING_TOOLBAR_MIN_CHARS) {
             FormattingToolbar(state = textFieldState, modifier = Modifier.padding(horizontal = 8.dp))
         }
+    }
+}
+
+@Composable
+private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
+    // Colour, not just enablement, carries "this will send" — a greyed-out icon reads as broken rather than as waiting
+    // for input.
+    IconButton(onClick = onClick, enabled = enabled) {
+        Icon(
+            imageVector = MeshtasticIcons.Send,
+            contentDescription = stringResource(Res.string.send),
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

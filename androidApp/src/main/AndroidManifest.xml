@@ -91,6 +91,8 @@
 
     <!-- Camera permission for QR Code scanning -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Voice messages: the microphone is used only between the composer's record and stop buttons. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- NFC permission for sharing channels and contacts -->
     <uses-permission android:name="android.permission.NFC" />

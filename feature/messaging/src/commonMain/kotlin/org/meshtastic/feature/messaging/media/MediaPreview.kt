@@ -72,8 +72,9 @@ private const val VIDEO_ASPECT_RATIO = 16f / 9f
 private const val SCRIM_ALPHA = 0.55f
 
 /**
- * Inline preview for a photo or video link. Reports through [onLoadFailure] when the photo could not be fetched (e.g.
- * no internet), so the bubble can fall back to showing the plain link; in that case the preview hides itself.
+ * Inline preview for a photo, video or voice-message link. Reports through [onLoadFailure] when the photo could not be
+ * fetched (e.g. no internet), so the bubble can fall back to showing the plain link; in that case the preview hides
+ * itself.
  */
 @Composable
 fun MediaPreview(link: MediaLink, onLoadFailure: (Boolean) -> Unit, modifier: Modifier = Modifier) {
@@ -81,6 +82,7 @@ fun MediaPreview(link: MediaLink, onLoadFailure: (Boolean) -> Unit, modifier: Mo
     when (link.kind) {
         MediaLink.Kind.IMAGE -> ImagePreview(link.url, onLoadFailure, { fullScreen = true }, modifier = modifier)
         MediaLink.Kind.VIDEO -> VideoPreview(link.url, onClick = { fullScreen = true }, modifier = modifier)
+        MediaLink.Kind.AUDIO -> AudioMessage(link, onLoadFailure, modifier = modifier)
     }
     if (fullScreen) {
         FullScreenMediaDialog(link = link, onDismiss = { fullScreen = false })
@@ -206,6 +208,9 @@ private fun FullScreenMediaDialog(link: MediaLink, onDismiss: () -> Unit) {
                     )
 
                 MediaLink.Kind.VIDEO -> VideoPlayer(url = link.url, modifier = Modifier.fillMaxSize())
+
+                // Voice messages play inline and never open full screen.
+                MediaLink.Kind.AUDIO -> Unit
             }
             // Drawn above the media so a tap anywhere returns to the chat, even over the platform video view.
             Box(

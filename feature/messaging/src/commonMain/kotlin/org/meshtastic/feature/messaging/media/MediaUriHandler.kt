@@ -24,8 +24,8 @@ import androidx.compose.ui.platform.UriHandler
 import org.meshtastic.core.ui.util.rememberOpenMediaUrl
 
 /**
- * Routes taps on photo/video links in [content] to an app that can show them (player, gallery), falling back to the
- * browser; every other link keeps the default handling.
+ * Routes taps on photo/video/audio links in [content] to an app that can show them (player, gallery), falling back to
+ * the browser; every other link keeps the default handling.
  */
 @Composable
 fun ProvideMediaUriHandler(content: @Composable () -> Unit) {
@@ -48,4 +48,5 @@ private val MediaLink.mimeTypeWildcard: String
         when (kind) {
             MediaLink.Kind.IMAGE -> "image/*"
             MediaLink.Kind.VIDEO -> "video/*"
+            MediaLink.Kind.AUDIO -> "audio/*"
         }

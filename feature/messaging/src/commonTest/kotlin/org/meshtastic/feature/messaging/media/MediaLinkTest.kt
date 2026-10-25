@@ -74,4 +74,36 @@ class MediaLinkTest {
         assertTrue(fitsInOneMessage("https://litter.catbox.moe/abc123.jpg"))
         assertFalse(fitsInOneMessage("https://example.com/" + "a".repeat(200) + ".jpg"))
     }
+
+    @Test
+    fun findsVoiceMessageLinkWithDurationHint() {
+        val link = findMediaLink("https://litter.catbox.moe/ab12cd.m4a#d=12")
+        assertEquals(MediaLink.Kind.AUDIO, link?.kind)
+        assertEquals("https://litter.catbox.moe/ab12cd.m4a", link?.fetchUrl)
+        assertEquals(12_000L, link?.durationMillis)
+    }
+
+    @Test
+    fun durationHintIsRoundedToSeconds() {
+        assertEquals("https://x.y/a.m4a#d=8", withDurationHint("https://x.y/a.m4a", 7_600))
+        assertEquals(null, MediaLink("https://x.y/a.m4a", MediaLink.Kind.AUDIO).durationMillis)
+    }
+
+    @Test
+    fun voiceRecordingsUploadAsM4a() {
+        assertEquals("m4a", mediaExtensionFor("audio/mp4"))
+        assertEquals("m4a", mediaExtensionFor("audio/3gpp"))
+        assertEquals("audio/mp4", mimeTypeFromName("voice_1.m4a"))
+    }
+
+    @Test
+    fun formatsPlaybackTimeAndSpeed() {
+        assertEquals("0:07", formatPlaybackTime(7_400))
+        assertEquals("2:05", formatPlaybackTime(125_000))
+        assertEquals("1.5x", formatPlaybackSpeed(1.5f))
+        assertEquals("2x", formatPlaybackSpeed(2f))
+        assertEquals(1.5f, nextPlaybackSpeed(1f))
+        assertEquals(2f, nextPlaybackSpeed(1.5f))
+        assertEquals(1f, nextPlaybackSpeed(2f))
+    }
 }

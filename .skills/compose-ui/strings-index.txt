@@ -2134,6 +2134,16 @@ via_mqtt
 via_udp
 view_on_map
 view_release
+### VOICE ###
+voice_cancel
+voice_message
+voice_pause
+voice_permission_denied
+voice_play
+voice_record
+voice_recording
+voice_send
+voice_speed
 voltage
 warning
 water_ph
