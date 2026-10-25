@@ -192,6 +192,8 @@ class MessageViewModel(
 
     val showFullMessageTimestamps = uiPrefs.showFullMessageTimestamps
 
+    val mediaLinksEnabled = uiPrefs.mediaLinksEnabled
+
     val messageFilterEnabled = filterPrefs.filterEnabled
 
     private val _showFiltered = MutableStateFlow(false)

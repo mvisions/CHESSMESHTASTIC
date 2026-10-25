@@ -135,6 +135,14 @@ interface UiPrefs {
     fun setShowFullMessageTimestamps(show: Boolean)
 
     /**
+     * Whether photo/video links in messages are previewed inline (fetched from the internet) and the composer offers
+     * uploading media to a public temporary file host (opt-out; default on).
+     */
+    val mediaLinksEnabled: StateFlow<Boolean>
+
+    fun setMediaLinksEnabled(enabled: Boolean)
+
+    /**
      * Whether to apply an event edition's ambient theme (accent wash + custom typeface) app-wide (opt-out; default on).
      */
     val eventThemeEnabled: StateFlow<Boolean>

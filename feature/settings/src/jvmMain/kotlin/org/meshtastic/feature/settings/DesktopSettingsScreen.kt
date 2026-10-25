@@ -77,6 +77,7 @@ import org.meshtastic.feature.settings.component.CacheLimitPreference
 import org.meshtastic.feature.settings.component.ExpressiveSection
 import org.meshtastic.feature.settings.component.FullMessageTimestampsSetting
 import org.meshtastic.feature.settings.component.HomoglyphSetting
+import org.meshtastic.feature.settings.component.MediaLinksSetting
 import org.meshtastic.feature.settings.component.NotificationSection
 import org.meshtastic.feature.settings.component.RadioAdminAppBar
 import org.meshtastic.feature.settings.component.ThemePickerDialog
@@ -114,6 +115,7 @@ fun DesktopSettingsScreen(
     val cacheLimit by settingsViewModel.dbCacheLimit.collectAsStateWithLifecycle()
     val isOtaCapable by settingsViewModel.isOtaCapable.collectAsStateWithLifecycle()
     val showFullMessageTimestamps by settingsViewModel.showFullMessageTimestamps.collectAsStateWithLifecycle()
+    val mediaLinksEnabled by settingsViewModel.mediaLinksEnabled.collectAsStateWithLifecycle()
 
     var showThemePickerDialog by remember { mutableStateOf(false) }
     var showLanguagePickerDialog by remember { mutableStateOf(false) }
@@ -220,6 +222,11 @@ fun DesktopSettingsScreen(
                     FullMessageTimestampsSetting(
                         checked = showFullMessageTimestamps,
                         onCheckedChange = settingsViewModel::setShowFullMessageTimestamps,
+                    )
+
+                    MediaLinksSetting(
+                        checked = mediaLinksEnabled,
+                        onCheckedChange = settingsViewModel::setMediaLinksEnabled,
                     )
 
                     HomoglyphSetting(

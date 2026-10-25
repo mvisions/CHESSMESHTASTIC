@@ -1106,6 +1106,17 @@ mark_unread_selected
 match_all
 match_any
 max
+### MEDIA ###
+media_attach
+media_image_description
+media_links_setting
+media_links_setting_summary
+media_play_video
+media_report
+media_report_description
+media_unsupported_type
+media_upload_failed
+media_uploading
 ### MESH ###
 mesh_beacon
 mesh_beacon_broadcast

@@ -36,4 +36,7 @@ interface FileService {
      * execution. Returns true if successful, false otherwise.
      */
     suspend fun read(uri: CommonUri, block: suspend (BufferedSource) -> Unit): Boolean
+
+    /** Returns the MIME type of [uri] (e.g. `image/jpeg`), or null when the platform cannot tell. */
+    suspend fun mimeType(uri: CommonUri): String? = null
 }

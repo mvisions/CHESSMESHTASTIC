@@ -41,6 +41,8 @@ actual fun annotatedStringFromHtml(html: String, linkStyles: TextLinkStyles?): A
 
 @Composable actual fun rememberOpenUrl(): (url: String) -> Unit = { _ -> }
 
+@Composable actual fun rememberOpenMediaUrl(): (url: String, mimeType: String) -> Unit = { _, _ -> }
+
 @Composable actual fun rememberShareText(): (text: String, subject: String) -> Unit = { _, _ -> }
 
 @Composable
@@ -50,6 +52,8 @@ actual fun rememberSaveFileLauncher(
 
 @Composable
 actual fun rememberOpenFileLauncher(onUriReceived: (CommonUri?) -> Unit): (mimeType: String) -> Unit = { _ -> }
+
+@Composable actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit = {}
 
 @Composable actual fun rememberOpenDocumentTreeLauncher(onTreeUriSelect: (CommonUri?) -> Unit): () -> Unit = {}
 

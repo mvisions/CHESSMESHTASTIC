@@ -145,6 +145,20 @@ class UiPrefsImplTest {
     }
 
     @Test
+    fun `media links default to enabled`() = testScope.runTest {
+        assertTrue(prefs.mediaLinksEnabled.value)
+    }
+
+    @Test
+    fun `media links persist when disabled`() = testScope.runTest {
+        prefs.setMediaLinksEnabled(false)
+
+        val stored = dataStore.data.first { it[UiPrefsImpl.KEY_MEDIA_LINKS_ENABLED] == false }
+        assertFalse(prefs.mediaLinksEnabled.value)
+        assertEquals(false, stored[UiPrefsImpl.KEY_MEDIA_LINKS_ENABLED])
+    }
+
+    @Test
     fun `firmware update notification keys persist without duplicates`() = testScope.runTest {
         prefs.recordFirmwareUpdateNotificationKey("firmware-update-notified:node:target:2.8.0")
         prefs.recordFirmwareUpdateNotificationKey("firmware-update-notified:node:target:2.8.0")

@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +71,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
@@ -90,6 +93,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 import org.meshtastic.core.common.util.HomoglyphCharacterStringTransformer
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.ContactKey
@@ -100,18 +104,22 @@ import org.meshtastic.core.model.QuickChatAction
 import org.meshtastic.core.model.util.getChannel
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.archived_channel_read_only
+import org.meshtastic.core.resources.media_attach
+import org.meshtastic.core.resources.media_uploading
 import org.meshtastic.core.resources.send
 import org.meshtastic.core.resources.type_a_message
 import org.meshtastic.core.resources.unknown_channel
 import org.meshtastic.core.ui.component.InlineStyle
 import org.meshtastic.core.ui.component.ShareContactDialog
 import org.meshtastic.core.ui.component.smartScrollToIndex
+import org.meshtastic.core.ui.icon.AttachFile
 import org.meshtastic.core.ui.icon.History
 import org.meshtastic.core.ui.icon.MeshtasticIcons
 import org.meshtastic.core.ui.icon.Send
 import org.meshtastic.core.ui.theme.AppTheme
 import org.meshtastic.core.ui.util.createClipEntry
 import org.meshtastic.core.ui.util.isFromSoftKeyboard
+import org.meshtastic.core.ui.util.rememberPickMediaLauncher
 import org.meshtastic.feature.messaging.component.ActionModeTopBar
 import org.meshtastic.feature.messaging.component.DeleteMessageDialog
 import org.meshtastic.feature.messaging.component.FormattingToolbar
@@ -123,6 +131,7 @@ import org.meshtastic.feature.messaging.component.QuickChatRow
 import org.meshtastic.feature.messaging.component.ReplySnippet
 import org.meshtastic.feature.messaging.component.ScrollToBottomFab
 import org.meshtastic.feature.messaging.component.TranslationModelDownloadDialog
+import org.meshtastic.feature.messaging.media.MediaUploadViewModel
 
 private const val ROUNDED_CORNER_PERCENT = 100
 private const val MAX_LINES = 3
@@ -155,6 +164,7 @@ fun MessageScreen(
     navigateToQuickChatOptions: () -> Unit,
     navigateToFilterSettings: () -> Unit,
     onNavigateBack: () -> Unit,
+    mediaUploadViewModel: MediaUploadViewModel = koinViewModel(key = "media-$contactKey"),
 ) {
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
@@ -178,12 +188,19 @@ fun MessageScreen(
 
     // UI State managed within this Composable
     var replyingToPacketId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val pickMedia = rememberPickMediaLauncher { uri ->
+        if (uri != null) {
+            mediaUploadViewModel.uploadAndSend(uri, contactKey, replyingToPacketId)
+            replyingToPacketId = null
+        }
+    }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var sharedContact by rememberSaveable { mutableStateOf<Node?>(null) }
     val selectedMessageIds = rememberSaveable { mutableStateOf(emptySet<Long>()) }
     val messageInputState = rememberTextFieldState(message)
     val showQuickChat by viewModel.showQuickChat.collectAsStateWithLifecycle()
     val showFullMessageTimestamps by viewModel.showFullMessageTimestamps.collectAsStateWithLifecycle()
+    val mediaLinksEnabled by viewModel.mediaLinksEnabled.collectAsStateWithLifecycle()
     val filteredCount by viewModel.filteredCount.collectAsStateWithLifecycle()
     val showFiltered by viewModel.showFiltered.collectAsStateWithLifecycle()
     val filteringDisabled = contactSettings[contactKey]?.filteringDisabled ?: false
@@ -195,6 +212,7 @@ fun MessageScreen(
     val currentSearchResult by viewModel.currentSearchResult.collectAsStateWithLifecycle()
     val translationAvailable by viewModel.translationAvailable.collectAsStateWithLifecycle()
     val translationDialogState by viewModel.translationDialogState.collectAsStateWithLifecycle()
+    val isUploadingMedia by mediaUploadViewModel.isUploading.collectAsStateWithLifecycle()
 
     // Read the stored draft before wiring the composer up, so its initial empty value cannot erase one.
     LaunchedEffect(contactKey) { viewModel.loadDraft(contactKey) }
@@ -506,6 +524,8 @@ fun MessageScreen(
                         isHomoglyphEncodingEnabled = homoglyphEncodingEnabled,
                         textFieldState = messageInputState,
                         mentionCandidates = mentionCandidates,
+                        onAttachMedia = pickMedia.takeIf { mediaLinksEnabled },
+                        isUploadingMedia = isUploadingMedia,
                         onSendMessage = {
                             val messageText = messageInputState.text.toString().trim { it.isWhitespace() }
                             if (messageText.isNotEmpty()) {
@@ -536,6 +556,7 @@ fun MessageScreen(
                     searchQuery = if (isSearchActive) searchQuery else "",
                     translationAvailable = translationAvailable,
                     showFullMessageTimestamps = showFullMessageTimestamps,
+                    mediaLinksEnabled = mediaLinksEnabled,
                     canReact = !isRetiredChannel,
                     canSend = !isRetiredChannel,
                 ),
@@ -818,6 +839,8 @@ internal fun RetiredChannelNotice(modifier: Modifier = Modifier) {
  * @param modifier The modifier for this composable.
  * @param maxByteSize The maximum allowed size of the message in bytes.
  * @param onSendMessage Callback invoked when the send button is pressed or send IME action is triggered.
+ * @param onAttachMedia Opens the photo/video picker; null hides the attach button.
+ * @param isUploadingMedia Shows upload progress in place of the attach button.
  */
 @Suppress("LongMethod", "CyclomaticComplexMethod") // Due to multiple parts of the OutlinedTextField
 @Composable
@@ -828,6 +851,8 @@ internal fun MessageInput(
     mentionCandidates: ImmutableMap<String, MentionCandidate>,
     modifier: Modifier = Modifier,
     maxByteSize: Int = MESSAGE_CHARACTER_LIMIT_BYTES,
+    onAttachMedia: (() -> Unit)? = null,
+    isUploadingMedia: Boolean = false,
     onSendMessage: () -> Unit,
 ) {
     val currentTextRaw = textFieldState.text.toString()
@@ -881,6 +906,7 @@ internal fun MessageInput(
     }
 
     var isFocused by remember { mutableStateOf(false) }
+    val uploadingDescription = stringResource(Res.string.media_uploading)
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (mentionActive) {
@@ -938,6 +964,27 @@ internal fun MessageInput(
             // The current approach (show error, disable send) is generally preferred for UX.
             // If strict real-time byte trimming is required, it needs careful handling of
             // cursor position and multi-byte characters, likely outside simple inputTransformation.
+            leadingIcon =
+            onAttachMedia?.let { attach ->
+                {
+                    if (isUploadingMedia) {
+                        CircularProgressIndicator(
+                            modifier =
+                            Modifier.size(24.dp).semantics {
+                                contentDescription = uploadingDescription
+                            },
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        IconButton(onClick = attach, enabled = isEnabled) {
+                            Icon(
+                                imageVector = MeshtasticIcons.AttachFile,
+                                contentDescription = stringResource(Res.string.media_attach),
+                            )
+                        }
+                    }
+                }
+            },
             trailingIcon = {
                 // Colour, not just enablement, carries "this will send" — a greyed-out icon reads as broken rather
                 // than as waiting for input.

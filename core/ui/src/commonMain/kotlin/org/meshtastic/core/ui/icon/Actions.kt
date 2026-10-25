@@ -22,6 +22,7 @@ import org.jetbrains.compose.resources.vectorResource
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.ic_add
 import org.meshtastic.core.resources.ic_add_reaction
+import org.meshtastic.core.resources.ic_attach_file
 import org.meshtastic.core.resources.ic_bar_chart
 import org.meshtastic.core.resources.ic_check
 import org.meshtastic.core.resources.ic_close
@@ -33,6 +34,7 @@ import org.meshtastic.core.resources.ic_edit
 import org.meshtastic.core.resources.ic_file_download
 import org.meshtastic.core.resources.ic_filter_alt
 import org.meshtastic.core.resources.ic_filter_alt_off
+import org.meshtastic.core.resources.ic_flag
 import org.meshtastic.core.resources.ic_folder
 import org.meshtastic.core.resources.ic_folder_open
 import org.meshtastic.core.resources.ic_keep
@@ -67,8 +69,12 @@ val MeshtasticIcons.Add: ImageVector
     @Composable get() = vectorResource(Res.drawable.ic_add)
 val MeshtasticIcons.AddReaction: ImageVector
     @Composable get() = vectorResource(Res.drawable.ic_add_reaction)
+val MeshtasticIcons.AttachFile: ImageVector
+    @Composable get() = vectorResource(Res.drawable.ic_attach_file)
 val MeshtasticIcons.Close: ImageVector
     @Composable get() = vectorResource(Res.drawable.ic_close)
+val MeshtasticIcons.Flag: ImageVector
+    @Composable get() = vectorResource(Res.drawable.ic_flag)
 val MeshtasticIcons.Copy: ImageVector
     @Composable get() = vectorResource(Res.drawable.ic_content_copy)
 val MeshtasticIcons.Delete: ImageVector

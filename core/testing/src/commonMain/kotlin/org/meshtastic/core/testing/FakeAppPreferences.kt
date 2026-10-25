@@ -140,6 +140,12 @@ class FakeUiPrefs : UiPrefs {
         showFullMessageTimestamps.value = show
     }
 
+    override val mediaLinksEnabled = MutableStateFlow(true)
+
+    override fun setMediaLinksEnabled(enabled: Boolean) {
+        mediaLinksEnabled.value = enabled
+    }
+
     override val eventThemeEnabled = MutableStateFlow(true)
 
     override fun setEventThemeEnabled(enabled: Boolean) {

@@ -46,6 +46,12 @@ import org.meshtastic.core.common.util.CommonUri
 /** Returns a function to open the platform's browser with the given URL. */
 @Composable expect fun rememberOpenUrl(): (url: String) -> Unit
 
+/**
+ * Returns a function that opens a photo/video [url] in an app able to show [mimeType], typically a wildcard type for
+ * images or videos, falling back to the browser when no such app is installed.
+ */
+@Composable expect fun rememberOpenMediaUrl(): (url: String, mimeType: String) -> Unit
+
 /** Returns a launcher function to prompt the user to save a file. The callback receives the saved file URI. */
 @Composable
 expect fun rememberSaveFileLauncher(
@@ -54,6 +60,9 @@ expect fun rememberSaveFileLauncher(
 
 /** Returns a launcher function to prompt the user to open/pick a file. The callback receives the selected file URI. */
 @Composable expect fun rememberOpenFileLauncher(onUriReceived: (CommonUri?) -> Unit): (mimeType: String) -> Unit
+
+/** Returns a launcher that lets the user pick a single photo or video. The callback receives the selected URI. */
+@Composable expect fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit
 
 /**
  * Returns a launcher that prompts the user to pick a *directory*. The callback receives a tree URI, or `null` if the

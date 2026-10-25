@@ -1148,6 +1148,17 @@
     <string name="match_all">Match All | Any</string>
     <string name="match_any">Match Any | All</string>
     <string name="max">Max</string>
+    <!-- MEDIA -->
+    <string name="media_attach">Attach photo or video</string>
+    <string name="media_image_description">Shared photo</string>
+    <string name="media_links_setting">Photo and video links</string>
+    <string name="media_links_setting_summary">Preview photo/video links in chats and attach media. Files are uploaded publicly to Litterbox (catbox.moe) for 24 hours, and loading previews reveals your IP address to the host.</string>
+    <string name="media_play_video">Play video</string>
+    <string name="media_report">Report</string>
+    <string name="media_report_description">Report this photo or video to the hosting site (e.g. content involving minors or illegal content)</string>
+    <string name="media_unsupported_type">Only photos and videos can be shared</string>
+    <string name="media_upload_failed">Could not upload the file. Check your internet connection.</string>
+    <string name="media_uploading">Uploading file…</string>
     <!-- MESH -->
     <string name="mesh_beacon">Mesh Beacon</string>
     <string name="mesh_beacon_broadcast">Broadcast a beacon</string>

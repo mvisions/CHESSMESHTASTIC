@@ -67,6 +67,13 @@ actual fun rememberOpenUrl(): (url: String) -> Unit = { url ->
     }
 }
 
+/** Desktop hands every URL to the OS, which already routes it to the default browser or player. */
+@Composable
+actual fun rememberOpenMediaUrl(): (url: String, mimeType: String) -> Unit {
+    val openUrl = rememberOpenUrl()
+    return { url, _ -> openUrl(url) }
+}
+
 /** JVM — Opens a native file dialog to save a file. */
 @Composable
 actual fun rememberSaveFileLauncher(
@@ -96,6 +103,13 @@ actual fun rememberOpenFileLauncher(onUriReceived: (CommonUri?) -> Unit): (mimeT
         val path = File(dir, file)
         onUriReceived(CommonUri.parse(path.toURI().toString()))
     }
+}
+
+/** JVM — Reuses the native file dialog; the upload path rejects anything that is not a photo or video. */
+@Composable
+actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit {
+    val openFile = rememberOpenFileLauncher(onMediaPick)
+    return { openFile("*/*") }
 }
 
 /** JVM — Opens a native dialog to pick a directory. */

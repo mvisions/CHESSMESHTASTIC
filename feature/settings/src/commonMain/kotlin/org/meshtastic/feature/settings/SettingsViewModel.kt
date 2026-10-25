@@ -176,6 +176,12 @@ class SettingsViewModel(
         uiPrefs.setShowFullMessageTimestamps(show)
     }
 
+    val mediaLinksEnabled = uiPrefs.mediaLinksEnabled
+
+    fun setMediaLinksEnabled(enabled: Boolean) {
+        uiPrefs.setMediaLinksEnabled(enabled)
+    }
+
     /** Set the application locale. Empty string means system default. */
     fun setLocale(languageTag: String) {
         uiPrefs.setLocale(languageTag)

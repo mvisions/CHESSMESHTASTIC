@@ -77,6 +77,7 @@ import org.meshtastic.core.ui.util.isBluetoothSupported
 import org.meshtastic.feature.settings.component.AppInfoSection
 import org.meshtastic.feature.settings.component.AppearanceSettingsContent
 import org.meshtastic.feature.settings.component.ExpressiveSection
+import org.meshtastic.feature.settings.component.MediaLinksSetting
 import org.meshtastic.feature.settings.component.PermissionsSettingsContent
 import org.meshtastic.feature.settings.component.PersistenceSettingsContent
 import org.meshtastic.feature.settings.component.PrivacySettingsContent
@@ -114,6 +115,7 @@ fun SettingsScreen(
     val isConnected by settingsViewModel.isConnected.collectAsStateWithLifecycle(false)
     val isOtaCapable by settingsViewModel.isOtaCapable.collectAsStateWithLifecycle()
     val showFullMessageTimestamps by settingsViewModel.showFullMessageTimestamps.collectAsStateWithLifecycle()
+    val mediaLinksEnabled by settingsViewModel.mediaLinksEnabled.collectAsStateWithLifecycle()
     val destNode by viewModel.destNode.collectAsStateWithLifecycle()
     val state by viewModel.radioConfigState.collectAsStateWithLifecycle()
 
@@ -296,6 +298,10 @@ fun SettingsScreen(
                         onShowThemePicker = { showThemePickerDialog = true },
                         unitsSummary = stringResource(UnitsOption.entries.first { it.override == unitsOverride }.label),
                         onShowUnitsPicker = { showUnitsPickerDialog = true },
+                    )
+                    MediaLinksSetting(
+                        checked = mediaLinksEnabled,
+                        onCheckedChange = settingsViewModel::setMediaLinksEnabled,
                     )
                     PersistenceSettingsContent(
                         cacheLimit = settingsViewModel.dbCacheLimit.collectAsStateWithLifecycle().value,

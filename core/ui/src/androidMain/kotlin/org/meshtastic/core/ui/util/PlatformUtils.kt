@@ -36,6 +36,7 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -140,6 +141,27 @@ actual fun rememberOpenUrl(): (url: String) -> Unit {
 }
 
 @Composable
+actual fun rememberOpenMediaUrl(): (url: String, mimeType: String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { url, mimeType ->
+            val uri = url.toUri()
+            val typed = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mimeType).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(typed)
+            } catch (_: ActivityNotFoundException) {
+                // No player/gallery claims the type over http(s): the browser always can.
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (ex: ActivityNotFoundException) {
+                    Logger.d { "Failed to open media URL intent: $ex" }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 @Suppress("Wrapping")
 actual fun rememberSaveFileLauncher(
     onUriReceived: (org.meshtastic.core.common.util.CommonUri) -> Unit,
@@ -182,6 +204,17 @@ actual fun rememberOpenFileLauncher(onUriReceived: (CommonUri?) -> Unit): (mimeT
             onUriReceived(uri?.let { it.toKmpUri() })
         }
     return remember(launcher) { { mimeType -> launcher.launch(mimeType) } }
+}
+
+@Composable
+actual fun rememberPickMediaLauncher(onMediaPick: (CommonUri?) -> Unit): () -> Unit {
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            onMediaPick(uri?.toKmpUri())
+        }
+    return remember(launcher) {
+        { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) }
+    }
 }
 
 @Composable

@@ -62,6 +62,10 @@ class JvmFileService(private val dispatchers: CoroutineDispatchers) : FileServic
             }
         }
 
+    override suspend fun mimeType(uri: CommonUri): String? = withContext(dispatchers.io) {
+        runCatching { java.nio.file.Files.probeContentType(uri.toFile().toPath()) }.getOrNull()
+    }
+
     /** The desktop file pickers hand back `file:` URIs; anything else is taken as a plain path. */
     private fun CommonUri.toFile(): File {
         val text = toString()

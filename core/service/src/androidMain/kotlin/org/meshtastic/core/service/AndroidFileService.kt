@@ -71,4 +71,15 @@ class AndroidFileService(private val context: Application, private val dispatche
                 false
             }
         }
+
+    override suspend fun mimeType(uri: CommonUri): String? = withContext(dispatchers.io) {
+        try {
+            context.contentResolver.getType(uri.toAndroidUri())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.w(e) { "Failed to resolve MIME type" }
+            null
+        }
+    }
 }

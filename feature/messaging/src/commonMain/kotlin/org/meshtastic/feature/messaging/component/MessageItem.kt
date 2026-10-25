@@ -108,6 +108,10 @@ import org.meshtastic.core.ui.icon.ShieldCheck
 import org.meshtastic.core.ui.theme.MessageItemColors
 import org.meshtastic.core.ui.theme.StatusColors.StatusGreen
 import org.meshtastic.core.ui.util.createClipEntry
+import org.meshtastic.feature.messaging.media.MediaPreview
+import org.meshtastic.feature.messaging.media.ProvideMediaUriHandler
+import org.meshtastic.feature.messaging.media.findMediaLink
+import org.meshtastic.feature.messaging.media.isOnlyMediaLink
 
 internal const val MESSAGE_STATUS_LABEL_TEST_TAG = "message_status_label"
 
@@ -137,6 +141,7 @@ fun MessageItem(
     onShowReactions: () -> Unit = {},
     showUserName: Boolean = true,
     showFullMessageTimestamp: Boolean = false,
+    mediaLinksEnabled: Boolean = true,
     emojis: List<Reaction> = emptyList(),
     quickEmojis: List<String> = listOf("👍", "👎", "😂", "🔥", "❤️", "😮"),
     /** False for an archived conversation: existing reactions still render, but none can be added. */
@@ -454,6 +459,25 @@ fun MessageItem(
                 )
 
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    val mediaLink =
+                        remember(message.text, mediaLinksEnabled) {
+                            if (mediaLinksEnabled) findMediaLink(message.text) else null
+                        }
+                    var mediaFailed by remember(mediaLink) { mutableStateOf(false) }
+                    if (mediaLink != null && searchQuery.isEmpty()) {
+                        MediaPreview(
+                            link = mediaLink,
+                            onLoadFailure = { mediaFailed = it },
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                    }
+                    // A bare media link is replaced by its preview, and comes back as text when the media can't
+                    // load.
+                    val hideBodyText =
+                        mediaLink != null &&
+                            searchQuery.isEmpty() &&
+                            !mediaFailed &&
+                            isOnlyMediaLink(message.text, mediaLink)
                     if (searchQuery.isNotEmpty()) {
                         HighlightedText(
                             text = message.text,
@@ -461,20 +485,22 @@ fun MessageItem(
                             style = MaterialTheme.typography.bodyLarge,
                             color = contentColor,
                         )
-                    } else {
+                    } else if (!hideBodyText) {
                         val mentionDisplayName =
                             remember(resolveMention) {
                                 { id: String ->
                                     resolveMention(id)?.let { it.user.long_name.ifEmpty { it.user.short_name } }
                                 }
                             }
-                        AutoLinkText(
-                            text = bodyText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = contentColor,
-                            mentionName = mentionDisplayName,
-                            onMentionClick = { id -> resolveMention(id)?.let(onClickChip) },
-                        )
+                        ProvideMediaUriHandler {
+                            AutoLinkText(
+                                text = bodyText,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = contentColor,
+                                mentionName = mentionDisplayName,
+                                onMentionClick = { id -> resolveMention(id)?.let(onClickChip) },
+                            )
+                        }
                     }
 
                     Row(
