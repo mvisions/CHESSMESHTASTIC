@@ -52,6 +52,12 @@ if (keystorePropertiesFile.exists()) {
 // The values-* directories Crowdin writes are the one list of shipped locales.
 val appResourcesDir = isolated.rootProject.projectDirectory.dir("core/resources/src/commonMain/composeResources")
 
+// Local emulators are x86_64; opt in with -Pmeshtastic.includeX86=true to run the debug build on one.
+val targetAbis = buildList {
+    addAll(listOf("armeabi-v7a", "arm64-v8a"))
+    if (providers.gradleProperty("meshtastic.includeX86").map { it.toBoolean() }.getOrElse(false)) add("x86_64")
+}
+
 configure<ApplicationExtension> {
     namespace = "org.meshtastic.app"
 
@@ -89,7 +95,7 @@ configure<ApplicationExtension> {
                 providers.of(LocaleQualifiersValueSource::class) { parameters.resourcesDir.set(appResourcesDir) }.get()
             androidResources.localeFilters.addAll(resourceLocaleFilters(qualifiers))
         }
-        ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
+        ndk { abiFilters += targetAbis }
     }
 
     // Disable ABI splits for bundle builds or when explicitly requested via Gradle property.
@@ -101,7 +107,7 @@ configure<ApplicationExtension> {
         abi {
             isEnable = !disableSplits
             reset()
-            include("armeabi-v7a", "arm64-v8a")
+            include(*targetAbis.toTypedArray())
             isUniversalApk = true
         }
     }
