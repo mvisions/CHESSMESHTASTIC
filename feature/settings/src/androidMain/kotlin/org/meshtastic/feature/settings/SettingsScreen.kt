@@ -75,6 +75,7 @@ import org.meshtastic.core.ui.icon.SettingsRemote
 import org.meshtastic.core.ui.icon.Wifi
 import org.meshtastic.core.ui.util.isBluetoothSupported
 import org.meshtastic.feature.settings.component.AppInfoSection
+import org.meshtastic.feature.settings.component.AppUpdateSetting
 import org.meshtastic.feature.settings.component.AppearanceSettingsContent
 import org.meshtastic.feature.settings.component.ExpressiveSection
 import org.meshtastic.feature.settings.component.MediaLinksSetting
@@ -82,6 +83,7 @@ import org.meshtastic.feature.settings.component.PermissionsSettingsContent
 import org.meshtastic.feature.settings.component.PersistenceSettingsContent
 import org.meshtastic.feature.settings.component.PrivacySettingsContent
 import org.meshtastic.feature.settings.component.RadioAdminAppBar
+import org.meshtastic.feature.settings.component.SupportEmailSetting
 import org.meshtastic.feature.settings.component.ThemePickerDialog
 import org.meshtastic.feature.settings.component.UnitsOption
 import org.meshtastic.feature.settings.component.UnitsPickerDialog
@@ -351,6 +353,8 @@ fun SettingsScreen(
             }
 
             ExpressiveSection(title = stringResource(Res.string.help_and_documentation)) {
+                AppUpdateSetting()
+                SupportEmailSetting()
                 ListItem(
                     text = stringResource(Res.string.help_and_documentation),
                     leadingIcon = MeshtasticIcons.HelpOutline,

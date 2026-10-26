@@ -35,6 +35,7 @@ Standardized Material 3 preference components for settings screens:
 
 ### 5. Utilities
 - **Android media capture**: Requests camera permission when necessary, delegates capture to the camera app, and shares only temporary capture files through a restricted FileProvider.
+  Uses the standard photo/video capture contracts without a MIME type, so action-only camera apps can handle them.
 - **`util/ModifierExtensions.kt`**: `Modifier.thenIf`, a conditional modifier.
 - **`util/ProtoExtensions.kt`**: Helpers over protobuf models: position time formatting, `MeshPacket.toPosition`, and channel-set import and diffing.
 

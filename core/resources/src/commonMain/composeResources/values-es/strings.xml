@@ -802,4 +802,14 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="voice_speed">Velocidad de reproducción</string>
     <string name="voice_message">Mensaje de voz</string>
     <string name="voice_permission_denied">Se necesita permiso de micrófono para grabar mensajes de voz</string>
+    <string name="app_update_check">Buscar actualización de la APK</string>
+    <string name="app_update_checking">Buscando actualizaciones…</string>
+    <string name="app_update_current">Está en la última versión</string>
+    <string name="app_update_opening">Abriendo la descarga de la nueva APK en el navegador</string>
+    <string name="app_update_error">No se pudo comprobar o abrir la actualización. Revisa tu conexión a internet e inténtalo de nuevo.</string>
+    <string name="app_installed_version">Versión instalada: %1$s</string>
+    <string name="app_support_report">Informar de un error de la APK</string>
+    <string name="app_support_subject">Meshtastic multimedia - Informe de error - %1$s</string>
+    <string name="app_support_body">Versión instalada: %1$s\n\nDescribe el problema:\n\nPasos para reproducirlo:\n\nResultado esperado:\n\nResultado obtenido:\n\nNo incluyas contraseñas, claves de canales ni mensajes privados.</string>
+    <string name="app_support_error">No se pudo abrir una aplicación de correo. Configura una o contacta manualmente con msabanda@gmail.com.</string>
 </resources>

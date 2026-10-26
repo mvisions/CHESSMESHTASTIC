@@ -2299,4 +2299,14 @@
     <string name="zh_TW" translatable="false">繁體中文</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
+    <string name="app_update_check">Check for app updates</string>
+    <string name="app_update_checking">Checking for updates…</string>
+    <string name="app_update_current">You are on the latest version</string>
+    <string name="app_update_opening">Opening the new APK download in your browser</string>
+    <string name="app_update_error">Unable to check or open the update. Check your internet connection and try again.</string>
+    <string name="app_installed_version">Installed version: %1$s</string>
+    <string name="app_support_report">Report an app error</string>
+    <string name="app_support_subject">Meshtastic media - Error report - %1$s</string>
+    <string name="app_support_body">Installed version: %1$s\n\nDescribe the problem:\n\nSteps to reproduce:\n\nExpected result:\n\nActual result:\n\nPlease do not include passwords, channel keys or private messages.</string>
+    <string name="app_support_error">Unable to open an email app. Configure one or contact msabanda@gmail.com manually.</string>
 </resources>

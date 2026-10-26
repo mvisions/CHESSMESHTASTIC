@@ -257,7 +257,6 @@ actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): (
         remember(context, launcher, showToast) {
             { captureType ->
                 val isPhoto = captureType == MediaCaptureType.PHOTO
-                val mimeType = if (isPhoto) "image/jpeg" else "video/mp4"
                 val captureDirectory = File(context.cacheDir, "media-captures")
                 var captureFile: File? = null
                 try {
@@ -269,22 +268,7 @@ actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): (
                             "${context.packageName}.media-capture",
                             captureFile,
                         )
-                    val intent =
-                        Intent(
-                            if (isPhoto) {
-                                android.provider.MediaStore.ACTION_IMAGE_CAPTURE
-                            } else {
-                                android.provider.MediaStore.ACTION_VIDEO_CAPTURE
-                            },
-                        )
-                            .apply {
-                                type = mimeType
-                                putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
-                                clipData = ClipData.newRawUri(captureFile.name, uri)
-                                addFlags(
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-                                )
-                            }
+                    val intent = createMediaCaptureIntent(context, captureType, uri)
                     pendingUriString = uri.toString()
                     pendingFilePath = captureFile.absolutePath
                     launcher.launch(intent)
@@ -338,6 +322,19 @@ actual fun rememberCaptureMediaLauncher(onMediaCapture: (CommonUri?) -> Unit): (
                 permissionLauncher.launch(android.Manifest.permission.CAMERA)
             }
         }
+    }
+}
+
+/** Camera actions must not carry a MIME type: standard camera intent filters do not declare one. */
+fun createMediaCaptureIntent(context: Context, captureType: MediaCaptureType, output: Uri): Intent {
+    val intent =
+        when (captureType) {
+            MediaCaptureType.PHOTO -> ActivityResultContracts.TakePicture().createIntent(context, output)
+            MediaCaptureType.VIDEO -> ActivityResultContracts.CaptureVideo().createIntent(context, output)
+        }
+    return intent.apply {
+        clipData = ClipData.newRawUri("media-capture", output)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
     }
 }
 
