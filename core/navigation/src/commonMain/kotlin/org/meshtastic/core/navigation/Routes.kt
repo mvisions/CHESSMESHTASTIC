@@ -47,6 +47,8 @@ sealed interface ContactsRoute : Route {
 
     @Serializable data class Messages(val contactKey: String, val message: String = "") : ContactsRoute
 
+    @Serializable data class ChessGame(val gameId: String) : ContactsRoute
+
     @Serializable data class Share(val message: String) : ContactsRoute
 
     @Serializable data object QuickChat : ContactsRoute

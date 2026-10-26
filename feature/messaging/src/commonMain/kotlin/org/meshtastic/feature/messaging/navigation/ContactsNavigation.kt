@@ -35,6 +35,9 @@ import org.meshtastic.core.navigation.replaceLast
 import org.meshtastic.core.ui.component.ScrollToTopEvent
 import org.meshtastic.feature.messaging.QuickChatScreen
 import org.meshtastic.feature.messaging.QuickChatViewModel
+import org.meshtastic.feature.messaging.chess.ChessGameScreen
+import org.meshtastic.feature.messaging.chess.ChessGameViewModel
+import org.meshtastic.feature.messaging.chess.privateMessageContactKey
 import org.meshtastic.feature.messaging.ui.contact.AdaptiveContactsScreen
 import org.meshtastic.feature.messaging.ui.contact.ContactsViewModel
 import org.meshtastic.feature.messaging.ui.sharing.ShareScreen
@@ -64,6 +67,7 @@ fun EntryProviderScope<NavKey>.contactsGraph(
         val contactKey = args.contactKey
         val messageViewModel: org.meshtastic.feature.messaging.MessageViewModel =
             koinViewModel(key = "messages-$contactKey")
+        val chessViewModel: ChessGameViewModel = koinViewModel(key = "chess-actions-$contactKey")
         messageViewModel.setContactKey(contactKey)
 
         org.meshtastic.feature.messaging.MessageScreen(
@@ -71,9 +75,25 @@ fun EntryProviderScope<NavKey>.contactsGraph(
             message = args.message,
             viewModel = messageViewModel,
             navigateToNodeDetails = { id -> backStack.add(NodesRoute.NodeDetail(id)) },
+            navigateToDirectMessage = { node ->
+                backStack.add(ContactsRoute.Messages(privateMessageContactKey(node.user.id, node.hasPKC)))
+            },
+            onPlayChess = { node ->
+                chessViewModel.invite(node) { gameId -> backStack.add(ContactsRoute.ChessGame(gameId)) }
+            },
             navigateToQuickChatOptions =
             dropUnlessResumed { backStack.add(org.meshtastic.core.navigation.ContactsRoute.QuickChat) },
             navigateToFilterSettings = dropUnlessResumed { backStack.add(SettingsRoute.FilterSettings) },
+            onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
+        )
+    }
+
+    entry<ContactsRoute.ChessGame>(metadata = { ListDetailSceneStrategy.detailPane() }) { args ->
+        val viewModel: ChessGameViewModel = koinViewModel(key = "chess-${args.gameId}")
+        viewModel.setGameId(args.gameId)
+        ChessGameScreen(
+            gameId = args.gameId,
+            viewModel = viewModel,
             onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
         )
     }

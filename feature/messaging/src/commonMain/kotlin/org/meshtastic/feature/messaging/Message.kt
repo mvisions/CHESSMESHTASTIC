@@ -156,6 +156,9 @@ fun MessageScreen(
     navigateToQuickChatOptions: () -> Unit,
     navigateToFilterSettings: () -> Unit,
     onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    navigateToDirectMessage: ((Node) -> Unit)? = null,
+    onPlayChess: ((Node) -> Unit)? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
@@ -406,7 +409,7 @@ fun MessageScreen(
         }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         topBar = {
             if (inSelectionMode) {
                 ActionModeTopBar(
@@ -554,6 +557,8 @@ fun MessageScreen(
                         { emoji, id -> onEvent(MessageScreenEvent.SendReaction(emoji, id)) }
                     },
                     onClickChip = { onEvent(MessageScreenEvent.NodeDetails(it)) },
+                    onSendPrivateMessage = navigateToDirectMessage,
+                    onPlayChess = onPlayChess,
                     onDeleteMessages = { viewModel.deleteMessages(it) },
                     onResendMessage = { message ->
                         viewModel.resendMessage(message.uuid, contactKey)

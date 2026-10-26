@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,10 +88,13 @@ import org.meshtastic.core.model.isAckProofForged
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.a11y_message_from
 import org.meshtastic.core.resources.action_show_message_status
+import org.meshtastic.core.resources.chess_node_action_details
+import org.meshtastic.core.resources.chess_node_action_play
 import org.meshtastic.core.resources.filter_message_label
 import org.meshtastic.core.resources.message_translated_label
 import org.meshtastic.core.resources.reply
 import org.meshtastic.core.resources.security_signed_verified
+import org.meshtastic.core.resources.send_private_message
 import org.meshtastic.core.ui.component.AutoLinkText
 import org.meshtastic.core.ui.component.HighlightedText
 import org.meshtastic.core.ui.component.NODE_TINT_EMPHASIZED
@@ -121,6 +127,47 @@ internal fun formatMessageTimestamp(
     fullDateTimeFormatter(message.displayTime)
 } else {
     message.time
+}
+
+@Composable
+private fun MessageAuthorChip(
+    node: Node,
+    onNodeDetails: (Node) -> Unit,
+    onSendPrivateMessage: ((Node) -> Unit)?,
+    onPlayChess: ((Node) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable(node.user.id) { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        NodeChip(node = node, onClick = { expanded = true })
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            onSendPrivateMessage?.let { callback ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.send_private_message)) },
+                    onClick = {
+                        expanded = false
+                        callback(node)
+                    },
+                )
+            }
+            onPlayChess?.let { callback ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.chess_node_action_play)) },
+                    onClick = {
+                        expanded = false
+                        callback(node)
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.chess_node_action_details)) },
+                onClick = {
+                    expanded = false
+                    onNodeDetails(node)
+                },
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,6 +203,8 @@ fun MessageItem(
     onSelect: () -> Unit = {},
     onDelete: () -> Unit = {},
     onClickChip: (Node) -> Unit = {},
+    onSendPrivateMessage: ((Node) -> Unit)? = null,
+    onPlayChess: ((Node) -> Unit)? = null,
     resolveMention: (String) -> Node? = { null },
     onNavigateToOriginalMessage: (Int) -> Unit = {},
     onStatusClick: () -> Unit = {},
@@ -316,7 +365,13 @@ fun MessageItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                NodeChip(node = node, onClick = onClickChip, modifier = Modifier.heightIn(min = 28.dp))
+                MessageAuthorChip(
+                    node = node,
+                    onNodeDetails = onClickChip,
+                    onSendPrivateMessage = onSendPrivateMessage,
+                    onPlayChess = onPlayChess,
+                    modifier = Modifier.heightIn(min = 28.dp),
+                )
                 Text(
                     text = node.effectiveLongName,
                     modifier = Modifier.weight(1f, fill = false),
