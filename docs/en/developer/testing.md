@@ -2,7 +2,7 @@
 title: Testing
 parent: Developer Guide
 nav_order: 7
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 description: Testing strategy for the Meshtastic KMP project — test categories, screenshot pipeline, baseline profiles, and CI integration.
 aliases:
   - tests
@@ -41,6 +41,14 @@ Android-specific tests that run on the JVM. In pure-Android/JVM modules (such as
 - ViewModel tests
 - Repository tests with Room fakes
 - Android-specific integration tests
+
+The VIP Brotli tests in `core:model`, `core:data`, and `core:repository` exercise the
+Android JNI implementation too. Their Android host-test tasks automatically build
+the same C sources for the host through `:core:brotli:buildHostNative` and add the
+result to the test JVM's native library path. This requires `JAVA_HOME` to point
+to a complete JDK, Android SDK CMake 3.22.1 (including Ninja), and a host C
+compiler. Android APKs continue to use the NDK-built libraries; host libraries are
+only test inputs and are not packaged.
 
 ### Compose UI tests
 

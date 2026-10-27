@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.koin.compose.viewmodel.koinViewModel
 import org.meshtastic.core.common.util.CommonUri
+import org.meshtastic.core.model.effectiveLongName
 import org.meshtastic.core.navigation.ContactsRoute
 import org.meshtastic.core.navigation.NodesRoute
 import org.meshtastic.core.navigation.SettingsRoute
@@ -37,6 +38,10 @@ import org.meshtastic.feature.messaging.QuickChatScreen
 import org.meshtastic.feature.messaging.QuickChatViewModel
 import org.meshtastic.feature.messaging.chess.ChessGameScreen
 import org.meshtastic.feature.messaging.chess.ChessGameViewModel
+import org.meshtastic.feature.messaging.games.FleetGameScreen
+import org.meshtastic.feature.messaging.games.FleetGameViewModel
+import org.meshtastic.feature.messaging.games.GameSelectionScreen
+import org.meshtastic.feature.messaging.games.MessageGame
 import org.meshtastic.feature.messaging.ui.contact.AdaptiveContactsScreen
 import org.meshtastic.feature.messaging.ui.contact.ContactsViewModel
 import org.meshtastic.feature.messaging.ui.sharing.ShareScreen
@@ -77,8 +82,8 @@ fun EntryProviderScope<NavKey>.contactsGraph(
             navigateToDirectMessage = { node ->
                 backStack.add(ContactsRoute.Messages(chessViewModel.directMessageContactKey(node)))
             },
-            onPlayChess = { node ->
-                chessViewModel.invite(node) { gameId -> backStack.add(ContactsRoute.ChessGame(gameId)) }
+            onOpenGames = { node ->
+                backStack.add(ContactsRoute.GameSelection(node.user.id))
             },
             navigateToQuickChatOptions =
             dropUnlessResumed { backStack.add(org.meshtastic.core.navigation.ContactsRoute.QuickChat) },
@@ -93,6 +98,37 @@ fun EntryProviderScope<NavKey>.contactsGraph(
         ChessGameScreen(
             gameId = args.gameId,
             viewModel = viewModel,
+            onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
+        )
+    }
+
+    entry<ContactsRoute.FleetGame>(metadata = { ListDetailSceneStrategy.detailPane() }) { args ->
+        val viewModel: FleetGameViewModel = koinViewModel(key = "fleet-${args.gameId}")
+        viewModel.setGameId(args.gameId)
+        FleetGameScreen(
+            gameId = args.gameId,
+            viewModel = viewModel,
+            onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
+        )
+    }
+
+    entry<ContactsRoute.GameSelection>(metadata = { ListDetailSceneStrategy.detailPane() }) { args ->
+        val contactsViewModel: ContactsViewModel = koinViewModel()
+        val chessViewModel: ChessGameViewModel = koinViewModel(key = "chess-actions-${args.nodeId}")
+        val fleetViewModel: FleetGameViewModel = koinViewModel(key = "fleet-actions-${args.nodeId}")
+        val node = contactsViewModel.getNode(args.nodeId)
+        val openGame: (String, MessageGame) -> Unit = { gameId, selected ->
+            backStack.removeLastOrNull()
+            when (selected) {
+                MessageGame.CHESS -> backStack.add(ContactsRoute.ChessGame(gameId))
+                MessageGame.BATTLESHIP -> backStack.add(ContactsRoute.FleetGame(gameId))
+            }
+        }
+
+        GameSelectionScreen(
+            opponentName = node.effectiveLongName,
+            onSelectChess = { chessViewModel.invite(node) { gameId -> openGame(gameId, MessageGame.CHESS) } },
+            onSelectFleet = { fleetViewModel.invite(node) { gameId -> openGame(gameId, MessageGame.BATTLESHIP) } },
             onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
         )
     }

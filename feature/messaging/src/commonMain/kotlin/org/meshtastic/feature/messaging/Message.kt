@@ -179,7 +179,7 @@ fun MessageScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     navigateToDirectMessage: ((Node) -> Unit)? = null,
-    onPlayChess: ((Node) -> Unit)? = null,
+    onOpenGames: ((Node) -> Unit)? = null,
     mediaUploadViewModel: MediaUploadViewModel = koinViewModel(key = "media-$contactKey"),
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -610,7 +610,7 @@ fun MessageScreen(
                     },
                     onClickChip = { onEvent(MessageScreenEvent.NodeDetails(it)) },
                     onSendPrivateMessage = navigateToDirectMessage,
-                    onPlayChess = onPlayChess,
+                    onOpenGames = onOpenGames,
                     onDeleteMessages = { viewModel.deleteMessages(it) },
                     onResendMessage = { message ->
                         viewModel.resendMessage(message.uuid, contactKey)
@@ -1075,7 +1075,7 @@ internal fun MessageInput(
                 }
             },
             trailingIcon = {
-                if (showMic && voiceRecorder != null) {
+                if (showMic) {
                     IconButton(onClick = voiceRecorder::start, enabled = isEnabled) {
                         Icon(
                             imageVector = MeshtasticIcons.Mic,

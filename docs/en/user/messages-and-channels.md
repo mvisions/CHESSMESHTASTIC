@@ -52,15 +52,19 @@ Tapping an existing channel opens the same editor, where you can change the name
 
 ### CHESSMESHTASTIC discovery channel
 
-CHESSMESHTASTIC automatically adds a secondary channel named `chess` after the connected
-node finishes downloading its configuration. The requested PSK `CH==` decodes to the
-one-byte firmware key selector 8; a Base64 encoder displays the same byte canonically
-as `CA==`. This is a public, well-known key, not a private channel.
+CHESSMESHTASTIC automatically adds a secondary channel named `games` after the connected
+node finishes downloading its configuration. The requested PSK `GM==` decodes to the
+one-byte firmware key selector 24; a Base64 encoder displays the same byte canonically
+as `GA==`. This is a public, well-known key, not a private channel.
 
-The app preserves the primary channel, existing secondaries, and radio settings.
-It reuses an empty secondary slot and does not add duplicates. If all slots are
-occupied, or a channel named `chess` has a different key, it reports the problem
-without replacing a channel. It also refuses installation in licensed amateur radio
+An old `chess` channel is renamed to `games` in its existing slot and receives the
+new PSK. Otherwise, the app reuses an empty secondary slot without changing other
+channels or radio settings. If `games` already exists, obsolete secondary `chess`
+channels are disabled without adding a duplicate. An old primary `chess` channel
+is never disabled when `games` already exists in another slot; this is reported
+as a conflict instead. If all slots are occupied and there is no old `chess`
+channel, or a channel named `games` has a different configuration, the app reports
+the problem without overwriting existing channels. It also refuses installation in licensed amateur radio
 mode. If a radio write fails, reconnect to retry.
 
 MQTT uplink and downlink are disabled for the channel when it is added. Both players

@@ -89,8 +89,8 @@ import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.a11y_message_from
 import org.meshtastic.core.resources.action_show_message_status
 import org.meshtastic.core.resources.chess_node_action_details
-import org.meshtastic.core.resources.chess_node_action_play
 import org.meshtastic.core.resources.filter_message_label
+import org.meshtastic.core.resources.games_menu
 import org.meshtastic.core.resources.message_translated_label
 import org.meshtastic.core.resources.reply
 import org.meshtastic.core.resources.security_signed_verified
@@ -138,7 +138,7 @@ private fun MessageAuthorChip(
     node: Node,
     onNodeDetails: (Node) -> Unit,
     onSendPrivateMessage: ((Node) -> Unit)?,
-    onPlayChess: ((Node) -> Unit)?,
+    onOpenGames: ((Node) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable(node.user.id) { mutableStateOf(false) }
@@ -154,9 +154,9 @@ private fun MessageAuthorChip(
                     },
                 )
             }
-            onPlayChess?.let { callback ->
+            onOpenGames?.let { callback ->
                 DropdownMenuItem(
-                    text = { Text(stringResource(Res.string.chess_node_action_play)) },
+                    text = { Text(stringResource(Res.string.games_menu)) },
                     onClick = {
                         expanded = false
                         callback(node)
@@ -209,7 +209,7 @@ fun MessageItem(
     onDelete: () -> Unit = {},
     onClickChip: (Node) -> Unit = {},
     onSendPrivateMessage: ((Node) -> Unit)? = null,
-    onPlayChess: ((Node) -> Unit)? = null,
+    onOpenGames: ((Node) -> Unit)? = null,
     resolveMention: (String) -> Node? = { null },
     onNavigateToOriginalMessage: (Int) -> Unit = {},
     onStatusClick: () -> Unit = {},
@@ -374,7 +374,7 @@ fun MessageItem(
                     node = node,
                     onNodeDetails = onClickChip,
                     onSendPrivateMessage = onSendPrivateMessage,
-                    onPlayChess = onPlayChess,
+                    onOpenGames = onOpenGames,
                     modifier = Modifier.heightIn(min = 28.dp),
                 )
                 Text(

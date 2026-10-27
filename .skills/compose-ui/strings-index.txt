@@ -94,9 +94,19 @@ app_functions_send_message
 app_functions_settings
 app_functions_settings_summary
 app_functions_write_section
+app_installed_version
 app_notifications
 app_settings
+app_support_body
+app_support_error
+app_support_report
+app_support_subject
 app_too_old
+app_update_check
+app_update_checking
+app_update_current
+app_update_error
+app_update_opening
 app_version
 apply
 apps
@@ -841,6 +851,34 @@ firmware_update_wipe_label
 firmware_update_wipe_usb_detail
 firmware_version
 fixed_position
+### FLEET ###
+fleet_accept
+fleet_board_cell
+fleet_cell_hit
+fleet_cell_miss
+fleet_cell_pending
+fleet_cell_ship
+fleet_cell_unknown
+fleet_cell_water
+fleet_decline
+fleet_game_description
+fleet_game_loading
+fleet_game_title
+fleet_invitation_message
+fleet_invitation_title
+fleet_my_board
+fleet_opponent_board
+fleet_report_defeat
+fleet_resign
+fleet_resign_confirmation
+fleet_result_hit
+fleet_result_lost
+fleet_result_miss
+fleet_result_resigned
+fleet_result_sunk
+fleet_result_won
+fleet_turn_waiting
+fleet_turn_yours
 for_more_information_see_our_privacy_policy
 ### FORMAT ###
 format_bold
@@ -852,6 +890,12 @@ fr_HT
 free_memory
 free_memory_description
 freq
+### GAMES ###
+games_chess
+games_chess_description
+games_choose_opponent
+games_choose_title
+games_menu
 gas_resistance
 generate_qr_code
 ### GEOFENCE ###
@@ -1171,12 +1215,16 @@ media_attach
 media_backup_title
 media_backup_uguu
 media_backup_upload
+media_camera_unavailable
+media_choose_existing
 media_image_description
 media_links_setting
 media_links_setting_summary
 media_play_video
+media_record_video
 media_report
 media_report_description
+media_take_photo
 media_unsupported_type
 media_upload_failed
 media_uploading
@@ -2199,6 +2247,12 @@ via_mqtt
 via_udp
 view_on_map
 view_release
+### VIP ###
+vip_channel_connection_changed
+vip_channel_join_message
+vip_channel_join_title
+vip_channel_no_slots
+vip_message_too_long
 ### VOICE ###
 voice_cancel
 voice_message

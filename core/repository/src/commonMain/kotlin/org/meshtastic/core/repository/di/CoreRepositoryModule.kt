@@ -20,6 +20,7 @@ import org.koin.core.annotation.Module
 import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 import org.meshtastic.core.common.di.ApplicationCoroutineScope
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.repository.FirmwareUpdateStatusRepository
 import org.meshtastic.core.repository.HomoglyphPrefs
 import org.meshtastic.core.repository.MeshBeaconPrefs
@@ -58,6 +59,7 @@ class CoreRepositoryModule {
         @Provided messageQueue: MessageQueue,
         @Provided analytics: PlatformAnalytics,
         @Provided radioConfigRepository: RadioConfigRepository,
+        @Provided dispatchers: CoroutineDispatchers,
     ): SendMessageUseCase = SendMessageUseCaseImpl(
         nodeRepository,
         packetRepository,
@@ -66,5 +68,6 @@ class CoreRepositoryModule {
         messageQueue,
         analytics,
         radioConfigRepository,
+        dispatchers,
     )
 }

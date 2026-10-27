@@ -15,10 +15,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import org.meshtastic.buildlogic.configureBrotliHostTests
+
 plugins {
     alias(libs.plugins.meshtastic.kmp.library)
     alias(libs.plugins.meshtastic.koin)
 }
+
+configureBrotliHostTests()
 
 kotlin {
     android { withHostTest {} }
@@ -28,6 +32,7 @@ kotlin {
             api(projects.core.model)
             api(libs.meshtastic.protobufs)
             implementation(projects.core.common)
+            implementation(projects.core.di)
             implementation(projects.core.database)
 
             implementation(libs.kotlinx.coroutines.core)

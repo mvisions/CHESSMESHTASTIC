@@ -65,10 +65,11 @@ class ChessChannelInstallerTest {
         assertEquals(2, write.index)
         assertEquals(Channel.Role.SECONDARY, write.role)
         val added = assertNotNull(write.settings)
-        assertEquals("chess", added.name)
+        assertEquals("games", added.name)
         assertEquals(1, added.psk.size)
-        assertEquals(8, added.psk[0].toInt())
-        assertEquals("CA==", added.psk.base64())
+        assertEquals(24, added.psk[0].toInt())
+        assertEquals("GA==", added.psk.base64())
+        assertEquals(assertNotNull("GM==".decodeBase64()), added.psk)
         assertFalse(added.uplink_enabled)
         assertFalse(added.downlink_enabled)
         assertEquals(listOf(primary, existing, added), fixture.repository.currentChannelSet.settings)
@@ -76,6 +77,66 @@ class ChessChannelInstallerTest {
         assertEquals(1, fixture.repository.channelSetUpdates.size)
         assertEquals(ChessChannelInstallResult.ALREADY_PRESENT, fixture.install())
         assertEquals(1, fixture.transactions)
+    }
+
+    @Test
+    fun migratesLegacyChessInPlaceEvenWhenAllSlotsAreOccupied() = runTest {
+        val fixture = Fixture()
+        val original = List(8) { if (it == 3) settings("chess", "CH==") else settings("channel$it") }
+        fixture.configure(original)
+
+        assertEquals(ChessChannelInstallResult.INSTALLED, fixture.install())
+
+        val migrated = assertNotNull(fixture.writes.single().settings)
+        assertEquals(3, fixture.writes.single().index)
+        assertEquals("games", migrated.name)
+        assertEquals(assertNotNull("GM==".decodeBase64()), migrated.psk)
+        assertEquals(
+            original.toMutableList().apply { this[3] = migrated },
+            fixture.repository.currentChannelSet.settings,
+        )
+        assertEquals(ChessChannelInstallResult.ALREADY_PRESENT, fixture.install())
+        assertEquals(1, fixture.transactions)
+    }
+
+    @Test
+    fun migratesLegacyPrimaryWithoutChangingItsRole() = runTest {
+        val fixture = Fixture()
+        fixture.configure(listOf(settings("CHESS", "CH=="), settings("friends")))
+
+        assertEquals(ChessChannelInstallResult.INSTALLED, fixture.install())
+
+        assertEquals(0, fixture.writes.single().index)
+        assertEquals(Channel.Role.PRIMARY, fixture.writes.single().role)
+        assertEquals("games", fixture.repository.currentChannelSet.settings.first().name)
+    }
+
+    @Test
+    fun removesLegacySecondaryWhenGamesAlreadyExistsWithoutDuplicatingGames() = runTest {
+        val fixture = Fixture()
+        val games = settings("games")
+        val friends = settings("friends")
+        fixture.configure(listOf(settings("primary"), settings("chess", "CH=="), games, friends))
+
+        assertEquals(ChessChannelInstallResult.INSTALLED, fixture.install())
+
+        assertEquals(1, fixture.writes.single().index)
+        assertEquals(Channel.Role.DISABLED, fixture.writes.single().role)
+        assertEquals("", fixture.repository.currentChannelSet.settings[1].name)
+        assertEquals(games, fixture.repository.currentChannelSet.settings[2])
+        assertEquals(friends, fixture.repository.currentChannelSet.settings[3])
+        assertEquals(ChessChannelInstallResult.ALREADY_PRESENT, fixture.install())
+    }
+
+    @Test
+    fun doesNotDisableLegacyPrimaryWhenGamesAlreadyExists() = runTest {
+        val fixture = Fixture()
+        val original = listOf(settings("chess", "CH=="), settings("games"))
+        fixture.configure(original)
+
+        assertEquals(ChessChannelInstallResult.NAME_CONFLICT, fixture.install())
+        assertEquals(original, fixture.repository.currentChannelSet.settings)
+        assertTrue(fixture.writes.isEmpty())
     }
 
     @Test
@@ -93,9 +154,9 @@ class ChessChannelInstallerTest {
     @Test
     fun existingChannelWithExpandedEquivalentKeyIsNotDuplicated() = runTest {
         val fixture = Fixture()
-        val chess = settings("chess")
-        val expanded = org.meshtastic.core.model.Channel(chess, Config.LoRaConfig.Builder().build()).psk
-        fixture.configure(listOf(settings("primary"), chess.newBuilder().also { it.psk = expanded }.build()))
+        val games = settings("games")
+        val expanded = org.meshtastic.core.model.Channel(games, Config.LoRaConfig.Builder().build()).psk
+        fixture.configure(listOf(settings("primary"), games.newBuilder().also { it.psk = expanded }.build()))
 
         assertEquals(ChessChannelInstallResult.ALREADY_PRESENT, fixture.install())
         assertTrue(fixture.writes.isEmpty())
@@ -116,9 +177,9 @@ class ChessChannelInstallerTest {
     }
 
     @Test
-    fun conflictingChessKeyIsNeverOverwritten() = runTest {
+    fun conflictingGamesKeyIsNeverOverwritten() = runTest {
         val fixture = Fixture()
-        val original = listOf(settings("primary"), settings("chess", "AQ=="))
+        val original = listOf(settings("primary"), settings("games", "AQ=="))
         fixture.configure(original)
 
         assertEquals(ChessChannelInstallResult.NAME_CONFLICT, fixture.install())
@@ -130,7 +191,7 @@ class ChessChannelInstallerTest {
     @Test
     fun conflictingEncryptionModeIsReportedEvenWithTheSameKey() = runTest {
         val fixture = Fixture()
-        val original = listOf(settings("primary"), settings("chess").newBuilder().also { it.use_aead = true }.build())
+        val original = listOf(settings("primary"), settings("games").newBuilder().also { it.use_aead = true }.build())
         fixture.configure(original)
 
         assertEquals(ChessChannelInstallResult.NAME_CONFLICT, fixture.install())
@@ -305,7 +366,7 @@ class ChessChannelInstallerTest {
     }
 
     private companion object {
-        fun settings(name: String, psk: String = "CH=="): ChannelSettings = ChannelSettings.Builder()
+        fun settings(name: String, psk: String = "GM=="): ChannelSettings = ChannelSettings.Builder()
             .also {
                 it.name = name
                 it.psk = assertNotNull(psk.decodeBase64())

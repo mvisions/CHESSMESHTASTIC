@@ -18,11 +18,11 @@ package org.meshtastic.core.repository.usecase
 
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.meshtastic.core.common.util.HomoglyphCharacterStringTransformer
 import org.meshtastic.core.common.util.nowMillis
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.Capabilities
 import org.meshtastic.core.model.ContactKey
 import org.meshtastic.core.model.DataPacket
@@ -79,7 +79,7 @@ sealed interface SendMessageOutcome {
     data object Refused : SendMessageOutcome
 }
 
-@Suppress("TooGenericExceptionCaught")
+@Suppress("TooGenericExceptionCaught", "LongParameterList")
 class SendMessageUseCaseImpl(
     private val nodeRepository: NodeRepository,
     private val packetRepository: PacketRepository,
@@ -88,6 +88,7 @@ class SendMessageUseCaseImpl(
     private val messageQueue: MessageQueue,
     private val analytics: PlatformAnalytics,
     private val radioConfigRepository: RadioConfigRepository,
+    private val dispatchers: CoroutineDispatchers,
 ) : SendMessageUseCase {
 
     /**
@@ -162,7 +163,7 @@ class SendMessageUseCaseImpl(
 
     private suspend fun validateVipPayload(packet: DataPacket) {
         val channels = radioConfigRepository.channelSetFlow.first()
-        withContext(Dispatchers.Default) { VipBrotli.transportPayload(packet, channels) }
+        withContext(dispatchers.default) { VipBrotli.transportPayload(packet, channels) }
     }
 
     // Direct message side-effects: share the contact's public key (PKI) or favorite the node (legacy) before sending

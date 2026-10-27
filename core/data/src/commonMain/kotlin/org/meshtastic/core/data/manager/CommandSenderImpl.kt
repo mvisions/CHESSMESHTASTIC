@@ -18,7 +18,6 @@ package org.meshtastic.core.data.manager
 
 import co.touchlab.kermit.Logger
 import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -29,6 +28,7 @@ import okio.ByteString.Companion.toByteString
 import org.koin.core.annotation.Single
 import org.meshtastic.core.common.di.ServiceScope
 import org.meshtastic.core.common.util.nowMillis
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.MessageStatus
 import org.meshtastic.core.model.NodeAddress
@@ -83,6 +83,7 @@ class CommandSenderImpl(
     private val neighborInfoHandler: NeighborInfoHandler,
     private val sessionManager: SessionManager,
     private val scope: ServiceScope,
+    private val dispatchers: CoroutineDispatchers,
 ) : CommandSender {
     private val currentPacketId = atomic(Random(nowMillis).nextLong().absoluteValue)
 
@@ -147,7 +148,7 @@ class CommandSenderImpl(
         val channels = radioConfigRepository.channelSetFlow.first()
         val bytes =
             try {
-                withContext(Dispatchers.Default) { VipBrotli.transportPayload(p, channels) }
+                withContext(dispatchers.default) { VipBrotli.transportPayload(p, channels) }
             } catch (e: VipMessageTooLongException) {
                 p.status = MessageStatus.ERROR
                 throw e

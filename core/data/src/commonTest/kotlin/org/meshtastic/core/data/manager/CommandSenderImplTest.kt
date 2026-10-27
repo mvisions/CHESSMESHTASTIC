@@ -30,10 +30,12 @@ import dev.mokkery.verifySuspend
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okio.ByteString
 import okio.ByteString.Companion.encodeUtf8
 import org.meshtastic.core.common.di.asServiceScope
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.MessageStatus
 import org.meshtastic.core.model.Node
@@ -75,6 +77,13 @@ class CommandSenderImplTest {
     private val tracerouteHandler = mock<TracerouteHandler>(MockMode.autofill)
     private val neighborInfoHandler = mock<NeighborInfoHandler>(MockMode.autofill)
     private val sessionManager = mock<SessionManager>(MockMode.autofill)
+    private val testDispatcher = UnconfinedTestDispatcher()
+    private val dispatchers =
+        CoroutineDispatchers(
+            io = testDispatcher,
+            main = testDispatcher,
+            default = testDispatcher,
+        )
 
     private lateinit var commandSender: CommandSenderImpl
 
@@ -95,6 +104,7 @@ class CommandSenderImplTest {
                 neighborInfoHandler = neighborInfoHandler,
                 sessionManager = sessionManager,
                 scope = TestScope().asServiceScope(),
+                dispatchers = dispatchers,
             )
     }
 
@@ -144,6 +154,7 @@ class CommandSenderImplTest {
                 neighborInfoHandler = neighborInfoHandler,
                 sessionManager = sessionManager,
                 scope = TestScope().asServiceScope(),
+                dispatchers = dispatchers,
             )
         assertEquals(0, commandSender.resolveNodeNum(NodeAddress.Local))
     }
@@ -191,6 +202,7 @@ class CommandSenderImplTest {
                 neighborInfoHandler,
                 sessionManager,
                 backgroundScope.asServiceScope(),
+                dispatchers,
             )
         testScheduler.runCurrent()
         val sent = mutableListOf<MeshPacket>()
@@ -684,6 +696,7 @@ class CommandSenderImplTest {
                 neighborInfoHandler = neighborInfoHandler,
                 sessionManager = sessionManager,
                 scope = testScope.asServiceScope(),
+                dispatchers = dispatchers,
             )
         testScope.testScheduler.advanceUntilIdle()
         everySuspend { packetHandler.sendToRadio(any<MeshPacket>()) } returns true

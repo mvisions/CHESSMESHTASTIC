@@ -123,11 +123,11 @@ class AppReleaseRemoteDataSourceTest {
         val renamed =
             next.copy(
                 assets =
-                    listOf(
-                        next.assets
-                            .single()
-                            .copy(url = next.assets.single().url.replace("/Meshtastic-Android/", "/CHESSMESHTASTIC/")),
-                    ),
+                listOf(
+                    next.assets
+                        .single()
+                        .copy(url = next.assets.single().url.replace("/Meshtastic-Android/", "/CHESSMESHTASTIC/")),
+                ),
             )
         assertEquals(renamed.assets.single().url, selectAppUpdate("5", listOf(renamed)))
     }

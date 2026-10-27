@@ -50,7 +50,7 @@ internal enum class ChessChannelInstallResult {
     FAILED,
 }
 
-/** Adds only the public chess discovery channel; gameplay remains in encrypted direct messages. */
+/** Adds only the public games discovery channel; gameplay remains in encrypted direct messages. */
 @Single
 class ChessChannelInstaller(
     private val adminController: AdminController,
@@ -85,7 +85,7 @@ class ChessChannelInstaller(
                                 install(identity, lifecycle)
                             }
                                 .getOrElse {
-                                    Logger.w { "Chess discovery channel installation failed; reconnect to retry" }
+                                    Logger.w { "Games discovery channel installation failed; reconnect to retry" }
                                     ChessChannelInstallResult.FAILED
                                 }
                             onResult(result)
@@ -107,7 +107,7 @@ class ChessChannelInstaller(
             } else {
                 plan()
             }
-        if (initial.channel == null) return initial.result
+        if (initial.channels.isEmpty()) return initial.result
         var committedSettings: List<ChannelSettings>? = null
         var result = initial.result
         adminController.editSettings(identity.nodeNum) {
@@ -115,13 +115,17 @@ class ChessChannelInstaller(
             // Read again after the begin boundary, which suspends while other settings may change.
             val current = plan()
             result = current.result
-            current.channel?.let { channel ->
+            current.channels.forEach { channel ->
                 requireCurrentConnection(identity, lifecycle)
                 setChannel(channel)
+            }
+            if (current.channels.isNotEmpty()) {
                 committedSettings =
                     current.settings.toMutableList().apply {
-                        while (size <= channel.index) add(ChannelSettings.Builder().build())
-                        this[channel.index] = checkNotNull(channel.settings)
+                        current.channels.forEach { channel ->
+                            while (size <= channel.index) add(ChannelSettings.Builder().build())
+                            this[channel.index] = checkNotNull(channel.settings)
+                        }
                     }
             }
         }
@@ -138,37 +142,69 @@ class ChessChannelInstaller(
         val channelSet = radioConfigRepository.channelSetFlow.first()
         val settings = channelSet.settings
         check(settings.isNotEmpty() && !settings.first().isChannelPlaceholder()) {
-            "Cannot add the chess channel without a configured primary channel"
+            "Cannot add the games channel without a configured primary channel"
         }
         val loraConfig = channelSet.lora_config ?: Config.LoRaConfig.Builder().build()
-        val expected = chessSettings.channelIdentity(loraConfig)
+        val expected = gamesSettings.channelIdentity(loraConfig)
+        val existingGames = settings.indexOfFirst { it.name.equals(gamesSettings.name, ignoreCase = true) }
+        val conflictingGames =
+            existingGames >= 0 &&
+                (
+                    settings[existingGames].channelIdentity(loraConfig) != expected ||
+                        settings[existingGames].use_aead != gamesSettings.use_aead
+                    )
+        val legacyIndices = settings.indices.filter { settings[it].name.equals("chess", ignoreCase = true) }
         val index =
-            (1 until CHANNEL_REPLACEMENT_SLOT_COUNT).firstOrNull {
-                settings.getOrNull(it)?.isChannelPlaceholder() != false
-            }
+            existingGames.takeIf { it >= 0 }
+                ?: legacyIndices.firstOrNull()
+                ?: (1 until CHANNEL_REPLACEMENT_SLOT_COUNT).firstOrNull {
+                    settings.getOrNull(it)?.isChannelPlaceholder() != false
+                }
         return when {
-            settings.any {
-                it.channelIdentity(loraConfig) == expected && it.use_aead == chessSettings.use_aead
-            } -> ChannelPlan(ChessChannelInstallResult.ALREADY_PRESENT)
-
-            settings.any { it.name.equals(chessSettings.name, ignoreCase = true) } ->
+            // Never disable a primary channel when games already occupies another slot.
+            conflictingGames || (existingGames >= 0 && 0 in legacyIndices) ->
                 ChannelPlan(ChessChannelInstallResult.NAME_CONFLICT)
 
             index == null -> ChannelPlan(ChessChannelInstallResult.NO_FREE_SLOT)
 
-            else ->
-                ChannelPlan(
-                    ChessChannelInstallResult.INSTALLED,
+            else -> migrationPlan(settings, legacyIndices, index, existingGames >= 0)
+        }
+    }
+
+    private fun migrationPlan(
+        settings: List<ChannelSettings>,
+        legacyIndices: List<Int>,
+        index: Int,
+        gamesPresent: Boolean,
+    ): ChannelPlan {
+        val changes = mutableListOf<Channel>()
+        if (!gamesPresent) {
+            changes +=
+                Channel.Builder()
+                    .also {
+                        it.index = index
+                        it.role = if (index == 0) Channel.Role.PRIMARY else Channel.Role.SECONDARY
+                        it.settings = gamesSettings
+                    }
+                    .build()
+        }
+        legacyIndices
+            .filter { it != index }
+            .forEach { legacyIndex ->
+                changes +=
                     Channel.Builder()
                         .also {
-                            it.index = index
-                            it.role = Channel.Role.SECONDARY
-                            it.settings = chessSettings
+                            it.index = legacyIndex
+                            it.role = Channel.Role.DISABLED
+                            it.settings = ChannelSettings.Builder().build()
                         }
-                        .build(),
-                    settings,
-                )
-        }
+                        .build()
+            }
+        return ChannelPlan(
+            if (changes.isEmpty()) ChessChannelInstallResult.ALREADY_PRESENT else ChessChannelInstallResult.INSTALLED,
+            changes,
+            settings,
+        )
     }
 
     private fun requireCurrentConnection(identity: ConnectionIdentity, lifecycle: ConnectionLifecycle) {
@@ -179,23 +215,23 @@ class ChessChannelInstaller(
                 nodeManager.connectionIdentity.value == identity &&
                 nodeManager.myNodeNum.value == identity.nodeNum,
         ) {
-            "The radio connection changed during chess channel installation"
+            "The radio connection changed during games channel installation"
         }
     }
 
     private data class ChannelPlan(
         val result: ChessChannelInstallResult,
-        val channel: Channel? = null,
+        val channels: List<Channel> = emptyList(),
         val settings: List<ChannelSettings> = emptyList(),
     )
 
     private companion object {
         // A public one-byte firmware key selector, not a private encryption key.
-        val chessSettings: ChannelSettings =
+        val gamesSettings: ChannelSettings =
             ChannelSettings.Builder()
                 .also {
-                    it.name = "chess"
-                    it.psk = checkNotNull("CH==".decodeBase64())
+                    it.name = "games"
+                    it.psk = checkNotNull("GM==".decodeBase64())
                     it.uplink_enabled = false
                     it.downlink_enabled = false
                 }

@@ -22,6 +22,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core.common)
+            implementation(projects.core.datastore)
             implementation(projects.core.model)
             implementation(projects.core.navigation)
             implementation(libs.meshtastic.protobufs)

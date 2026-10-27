@@ -92,7 +92,7 @@ internal data class MessageListHandlers(
     val onSendReaction: (String, Int) -> Unit,
     val onClickChip: (Node) -> Unit,
     val onSendPrivateMessage: ((Node) -> Unit)? = null,
-    val onPlayChess: ((Node) -> Unit)? = null,
+    val onOpenGames: ((Node) -> Unit)? = null,
     val onDeleteMessages: (List<Long>) -> Unit,
     /** Replaces a failed message with a fresh send of its text; the action decides whether sending is allowed. */
     val onResendMessage: (Message) -> Unit,
@@ -425,7 +425,7 @@ private fun RenderPagedChatMessageRow(
         onDelete = { handlers.onDeleteMessages(listOf(message.uuid)) },
         onClickChip = handlers.onClickChip,
         onSendPrivateMessage = handlers.onSendPrivateMessage,
-        onPlayChess = handlers.onPlayChess,
+        onOpenGames = handlers.onOpenGames,
         resolveMention = resolveMention,
         onStatusClick = { onShowStatusDialog(message) },
         onReply = { handlers.onReply(message) },

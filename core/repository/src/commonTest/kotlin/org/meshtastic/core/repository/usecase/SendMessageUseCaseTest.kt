@@ -29,7 +29,9 @@ import dev.mokkery.verify.VerifyMode
 import dev.mokkery.verifySuspend
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.ContactKey
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.Node
@@ -86,6 +88,7 @@ class SendMessageUseCaseTest {
                 messageQueue = messageQueue,
                 analytics = analytics,
                 radioConfigRepository = radioConfigRepository,
+                dispatchers = UnconfinedTestDispatcher().let { CoroutineDispatchers(io = it, main = it, default = it) },
             )
     }
 

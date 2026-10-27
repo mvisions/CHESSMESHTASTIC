@@ -16,7 +16,6 @@
   -->
 
 <resources>
-    <string name="vip_message_too_long">The message or media link does not fit in one VIP Brotli packet. Shorten the message or use a shorter link.</string>
     <!-- A11Y -->
     <string name="a11y_humidity">Humidity</string>
     <string name="a11y_label_value">%1$s: %2$s</string>
@@ -116,9 +115,19 @@
     <string name="app_functions_settings">System AI</string>
     <string name="app_functions_settings_summary">Control which functions are available to AI assistants</string>
     <string name="app_functions_write_section">Write functions</string>
+    <string name="app_installed_version">Installed version: %1$s</string>
     <string name="app_notifications">App Notifications</string>
     <string name="app_settings">App</string>
+    <string name="app_support_body">Installed version: %1$s\n\nDescribe the problem:\n\nSteps to reproduce:\n\nExpected result:\n\nActual result:\n\nPlease do not include passwords, channel keys or private messages.</string>
+    <string name="app_support_error">Unable to open an email app. Configure one or contact msabanda@gmail.com manually.</string>
+    <string name="app_support_report">Report an app error</string>
+    <string name="app_support_subject">Meshtastic media - Error report - %1$s</string>
     <string name="app_too_old">Application update required</string>
+    <string name="app_update_check">Check for app updates</string>
+    <string name="app_update_checking">Checking for updates…</string>
+    <string name="app_update_current">You are on the latest version</string>
+    <string name="app_update_error">Unable to check or open the update. Check your internet connection and try again.</string>
+    <string name="app_update_opening">Opening the new APK download in your browser</string>
     <string name="app_version">Version</string>
     <string name="apply">Apply</string>
     <string name="apps">Apps</string>
@@ -223,11 +232,11 @@
     <!-- CHESS -->
     <string name="chess_accept">Accept</string>
     <string name="chess_accept_draw">Accept draw</string>
-    <string name="chess_channel_conflict">The chess channel has a different configuration. Existing channels were not changed.</string>
-    <string name="chess_channel_failed">Could not install the chess channel. Reconnect your node to retry.</string>
-    <string name="chess_channel_full">No free secondary channel slot for chess. Existing channels were not changed.</string>
-    <string name="chess_channel_installed">Added the public chess discovery channel. Games still use encrypted direct messages.</string>
-    <string name="chess_channel_licensed">The chess channel cannot be installed in licensed amateur radio mode.</string>
+    <string name="chess_channel_conflict">The games channel has a different configuration. Existing channels were not changed.</string>
+    <string name="chess_channel_failed">Could not install the games channel. Reconnect your node to retry.</string>
+    <string name="chess_channel_full">No free secondary channel slot for games. Existing channels were not changed.</string>
+    <string name="chess_channel_installed">Added the public games discovery channel. Games still use encrypted direct messages.</string>
+    <string name="chess_channel_licensed">The games channel cannot be installed in licensed amateur radio mode.</string>
     <string name="chess_check">Check</string>
     <string name="chess_choose_promotion">Choose a promotion piece</string>
     <string name="chess_claim_fifty_move">Claim 50-move draw</string>
@@ -878,6 +887,34 @@
     <string name="firmware_update_wipe_usb_detail">Wipes the device's flash completely, then installs the selected firmware from scratch.</string>
     <string name="firmware_version">Firmware version: %1$s</string>
     <string name="fixed_position">Fixed Position</string>
+    <!-- FLEET -->
+    <string name="fleet_accept">Accept</string>
+    <string name="fleet_board_cell">Cell %1$s: %2$s</string>
+    <string name="fleet_cell_hit">hit</string>
+    <string name="fleet_cell_miss">miss</string>
+    <string name="fleet_cell_pending">shot pending</string>
+    <string name="fleet_cell_ship">ship</string>
+    <string name="fleet_cell_unknown">not fired at</string>
+    <string name="fleet_cell_water">water</string>
+    <string name="fleet_decline">Decline</string>
+    <string name="fleet_game_description">Play Battleship with a randomly generated fleet over private mesh messages.</string>
+    <string name="fleet_game_loading">Loading game...</string>
+    <string name="fleet_game_title">Battleship</string>
+    <string name="fleet_invitation_message">%1$s invites you to play Battleship. Do you accept?</string>
+    <string name="fleet_invitation_title">Battleship invitation</string>
+    <string name="fleet_my_board">Your fleet</string>
+    <string name="fleet_opponent_board">Opponent's fleet</string>
+    <string name="fleet_report_defeat">Report defeat</string>
+    <string name="fleet_resign">Resign</string>
+    <string name="fleet_resign_confirmation">Are you sure you want to resign this game?</string>
+    <string name="fleet_result_hit">Hit! Choose your next shot.</string>
+    <string name="fleet_result_lost">Your fleet has been sunk.</string>
+    <string name="fleet_result_miss">Miss. Choose your next shot.</string>
+    <string name="fleet_result_resigned">You resigned from the game.</string>
+    <string name="fleet_result_sunk">Ship sunk (length %1$d)! Choose your next shot.</string>
+    <string name="fleet_result_won">You won! The opponent's fleet has been sunk.</string>
+    <string name="fleet_turn_waiting">Waiting for %1$s to fire...</string>
+    <string name="fleet_turn_yours">Your turn: choose a coordinate to fire at.</string>
     <string name="for_more_information_see_our_privacy_policy">For more information, see our privacy policy.</string>
     <!-- FORMAT -->
     <string name="format_bold">Bold</string>
@@ -889,6 +926,12 @@
     <string name="free_memory">Free Memory</string>
     <string name="free_memory_description">Available system memory in bytes</string>
     <string name="freq">Freq</string>
+    <!-- GAMES -->
+    <string name="games_chess">Chess</string>
+    <string name="games_chess_description">Challenge your opponent to a game of chess over private mesh messages.</string>
+    <string name="games_choose_opponent">Choose a game to play with %1$s.</string>
+    <string name="games_choose_title">Choose a game</string>
+    <string name="games_menu">Games</string>
     <string name="gas_resistance">Gas Resistance</string>
     <string name="generate_qr_code">Generate QR Code</string>
     <!-- GEOFENCE -->
@@ -1210,10 +1253,6 @@
     <string name="match_any">Match Any | All</string>
     <string name="max">Max</string>
     <!-- MEDIA -->
-    <string name="vip_channel_join_title">Join VIP?</string>
-    <string name="vip_channel_join_message">Would you like to join the VIP channel? This adds VIP as a secondary channel with PSK VP== without changing your other channels. This is a shared key, not a private channel. Your device may restart to apply the change.</string>
-    <string name="vip_channel_connection_changed">The device or its configuration changed. Reconnect and try joining VIP again.</string>
-    <string name="vip_channel_no_slots">No free secondary channel slot is available for VIP. No existing channel was replaced.</string>
     <string name="media_attach">Attach photo or video</string>
     <string name="media_backup_title">Upload failed — use a backup?</string>
     <string name="media_backup_uguu">Litterbox did not return a usable link. Upload this file to Uguu (uguu.se) instead? The file will be public and deleted after 3 hours, not 24 hours. Maximum size: 128 MiB. Uguu receives the file and your IP address. Only the resulting link is sent through the mesh.</string>
@@ -2280,6 +2319,12 @@
     <string name="via_udp">via UDP</string>
     <string name="view_on_map">View on map</string>
     <string name="view_release">View Release</string>
+    <!-- VIP -->
+    <string name="vip_channel_connection_changed">The device or its configuration changed. Reconnect and try joining VIP again.</string>
+    <string name="vip_channel_join_message">Would you like to join the VIP channel? This adds VIP as a secondary channel with PSK VP== without changing your other channels. This is a shared key, not a private channel. Your device may restart to apply the change.</string>
+    <string name="vip_channel_join_title">Join VIP?</string>
+    <string name="vip_channel_no_slots">No free secondary channel slot is available for VIP. No existing channel was replaced.</string>
+    <string name="vip_message_too_long">The message or media link does not fit in one VIP Brotli packet. Shorten the message or use a shorter link.</string>
     <!-- VOICE -->
     <string name="voice_cancel">Cancel recording</string>
     <string name="voice_message">Voice message</string>
@@ -2361,14 +2406,5 @@
     <string name="zh_TW" translatable="false">繁體中文</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
-    <string name="app_update_check">Check for app updates</string>
-    <string name="app_update_checking">Checking for updates…</string>
-    <string name="app_update_current">You are on the latest version</string>
-    <string name="app_update_opening">Opening the new APK download in your browser</string>
-    <string name="app_update_error">Unable to check or open the update. Check your internet connection and try again.</string>
-    <string name="app_installed_version">Installed version: %1$s</string>
-    <string name="app_support_report">Report an app error</string>
-    <string name="app_support_subject">Meshtastic media - Error report - %1$s</string>
-    <string name="app_support_body">Installed version: %1$s\n\nDescribe the problem:\n\nSteps to reproduce:\n\nExpected result:\n\nActual result:\n\nPlease do not include passwords, channel keys or private messages.</string>
-    <string name="app_support_error">Unable to open an email app. Configure one or contact msabanda@gmail.com manually.</string>
 </resources>
+
