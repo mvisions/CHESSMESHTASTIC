@@ -37,7 +37,6 @@ import org.meshtastic.feature.messaging.QuickChatScreen
 import org.meshtastic.feature.messaging.QuickChatViewModel
 import org.meshtastic.feature.messaging.chess.ChessGameScreen
 import org.meshtastic.feature.messaging.chess.ChessGameViewModel
-import org.meshtastic.feature.messaging.chess.privateMessageContactKey
 import org.meshtastic.feature.messaging.ui.contact.AdaptiveContactsScreen
 import org.meshtastic.feature.messaging.ui.contact.ContactsViewModel
 import org.meshtastic.feature.messaging.ui.sharing.ShareScreen
@@ -76,7 +75,7 @@ fun EntryProviderScope<NavKey>.contactsGraph(
             viewModel = messageViewModel,
             navigateToNodeDetails = { id -> backStack.add(NodesRoute.NodeDetail(id)) },
             navigateToDirectMessage = { node ->
-                backStack.add(ContactsRoute.Messages(privateMessageContactKey(node.user.id, node.hasPKC)))
+                backStack.add(ContactsRoute.Messages(chessViewModel.directMessageContactKey(node)))
             },
             onPlayChess = { node ->
                 chessViewModel.invite(node) { gameId -> backStack.add(ContactsRoute.ChessGame(gameId)) }

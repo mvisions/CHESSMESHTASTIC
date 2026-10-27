@@ -238,7 +238,6 @@ chess_promotion_bishop
 chess_promotion_knight
 chess_promotion_queen
 chess_promotion_rook
-chess_requires_key
 chess_resign
 chess_resign_confirmation
 chess_side_black

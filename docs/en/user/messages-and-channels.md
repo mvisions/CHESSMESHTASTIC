@@ -65,8 +65,10 @@ mode. If a radio write fails, reconnect to retry.
 
 MQTT uplink and downlink are disabled for the channel when it is added. Both players
 must use compatible LoRa settings to hear each other. The channel is for public
-chat and finding opponents; invitations and every game action continue to travel
-as encrypted direct messages through the mesh, without an Internet game server.
+chat and finding opponents; invitations and every game action travel as direct
+messages through the mesh, without an Internet game server. A game uses the same
+conversation as **Send private message**: public-key encryption when both nodes hold
+each other's keys, otherwise the channel the opponent was heard on.
 
 ### Archived Channels
 

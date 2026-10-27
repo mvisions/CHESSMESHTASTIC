@@ -32,7 +32,6 @@ import org.meshtastic.core.resources.chess_channel_failed
 import org.meshtastic.core.resources.chess_channel_full
 import org.meshtastic.core.resources.chess_channel_installed
 import org.meshtastic.core.resources.chess_channel_licensed
-import org.meshtastic.core.resources.chess_requires_key
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.errorEventFlow
 import org.meshtastic.core.ui.viewmodel.safeLaunch
@@ -79,17 +78,11 @@ class ChessGameViewModel(
         gameId.value = id
     }
 
+    fun directMessageContactKey(node: Node): String = coordinator.directMessageContactKey(node)
+
     fun invite(node: Node, onInvited: (String) -> Unit) {
-        if (!node.hasPKC) {
-            safeLaunch(tag = "chessInviteRequiresKey") {
-                snackbarManager.showSnackbar(
-                    MessagingUiTextResolver.resolve(UiText.Resource(Res.string.chess_requires_key)),
-                )
-            }
-            return
-        }
         safeLaunch(errorEvents = errorEvents, tag = "chessInvite") {
-            val id = coordinator.invite(node.user.id, node.effectiveLongName)
+            val id = coordinator.invite(node, node.effectiveLongName)
             onInvited(id)
         }
     }

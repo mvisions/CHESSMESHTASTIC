@@ -266,7 +266,6 @@
     <string name="chess_promotion_knight">Knight</string>
     <string name="chess_promotion_queen">Queen</string>
     <string name="chess_promotion_rook">Rook</string>
-    <string name="chess_requires_key">Chess requires a node with a public key for encrypted direct messages.</string>
     <string name="chess_resign">Resign</string>
     <string name="chess_resign_confirmation">Are you sure you want to resign this chess game?</string>
     <string name="chess_side_black">Black</string>

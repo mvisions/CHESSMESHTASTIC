@@ -30,6 +30,7 @@ import org.koin.core.annotation.Single
 import org.meshtastic.core.common.util.nowMillis
 import org.meshtastic.core.model.ContactKey
 import org.meshtastic.core.model.Message
+import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
 import org.meshtastic.core.repository.NodeRepository
 import org.meshtastic.core.repository.PacketRepository
@@ -107,12 +108,16 @@ class ChessGameCoordinator(
             }
     }
 
-    suspend fun invite(nodeId: String, opponentName: String): String = mutex.withLock {
+    /** The same conversation "Send private message" opens, so games travel exactly like a direct message. */
+    fun directMessageContactKey(node: Node): String = privateMessageContactKey(node, nodeRepository.ourNodeInfo.value)
+
+    suspend fun invite(node: Node, opponentName: String): String = mutex.withLock {
+        val nodeId = node.user.id
         require(nodeId.startsWith(NODE_ID_PREFIX) && nodeId.length > NODE_ID_PREFIX.length) {
             "A valid Meshtastic node ID is required to start a chess game."
         }
         val gameId = newGameId()
-        val contactKey = privateMessageContactKey(nodeId, usesPki = true)
+        val contactKey = privateMessageContactKey(node, nodeRepository.ourNodeInfo.value)
         sendCommand(contactKey, ChessCommand.Invite(gameId))
         putGame(
             ChessGameSession(
@@ -434,11 +439,11 @@ class ChessGameCoordinator(
     }
 }
 
-fun privateMessageContactKey(nodeId: String, usesPki: Boolean): String {
-    val address = NodeAddress.ById(nodeId)
-    return if (usesPki) {
-        address.toContactKey(NodeAddress.PKC_CHANNEL_INDEX).value
-    } else {
-        address.toIdString()
-    }
+/**
+ * Mirrors the node detail "Message" action: public-key encryption when both nodes hold keys, otherwise the channel the
+ * node was heard on.
+ */
+fun privateMessageContactKey(node: Node, ourNode: Node?): String {
+    val channel = if (ourNode?.hasPKC == true && node.hasPKC) NodeAddress.PKC_CHANNEL_INDEX else node.channel
+    return NodeAddress.ById(node.user.id).toContactKey(channel).value
 }
