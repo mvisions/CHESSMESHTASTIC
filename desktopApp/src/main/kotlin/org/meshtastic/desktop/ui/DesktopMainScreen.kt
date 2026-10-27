@@ -30,6 +30,7 @@ import org.meshtastic.core.ui.component.MeshtasticNavDisplay
 import org.meshtastic.core.ui.component.MeshtasticNavigationSuite
 import org.meshtastic.core.ui.viewmodel.UIViewModel
 import org.meshtastic.desktop.navigation.desktopNavGraph
+import org.meshtastic.feature.messaging.chess.ChessInvitationHost
 import org.meshtastic.feature.settings.navigation.rememberSettingsRadioConfigViewModelProvider
 
 /**
@@ -48,6 +49,9 @@ fun DesktopMainScreen(uiViewModel: UIViewModel, multiBackstack: MultiBackstack, 
             uiViewModel = uiViewModel,
             hostModifier = Modifier.padding(bottom = 24.dp),
         ) {
+            ChessInvitationHost { gameId ->
+                backStack.add(org.meshtastic.core.navigation.ContactsRoute.ChessGame(gameId))
+            }
             MeshtasticNavigationSuite(
                 multiBackstack = multiBackstack,
                 uiViewModel = uiViewModel,

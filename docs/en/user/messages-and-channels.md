@@ -2,7 +2,7 @@
 title: Messages & Channels
 parent: User Guide
 nav_order: 3
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 description: Send and receive messages, manage channels, configure encryption, search conversations, and use quick chat, reactions, and message actions.
 aliases:
   - channels
@@ -49,6 +49,24 @@ Key length alone does not change the icon: a 128-bit key and a 256-bit key both 
 7. Optional: share the channel URL or QR code with the people who need access.
 
 Tapping an existing channel opens the same editor, where you can change the name, the PSK, MQTT uplink and downlink, and position precision. Every edit on this screen — adding, editing, deleting, or dragging a channel into a new order — waits on **Send** the same way.
+
+### CHESSMESHTASTIC discovery channel
+
+CHESSMESHTASTIC automatically adds a secondary channel named `chess` after the connected
+node finishes downloading its configuration. The requested PSK `CH==` decodes to the
+one-byte firmware key selector 8; a Base64 encoder displays the same byte canonically
+as `CA==`. This is a public, well-known key, not a private channel.
+
+The app preserves the primary channel, existing secondaries, and radio settings.
+It reuses an empty secondary slot and does not add duplicates. If all slots are
+occupied, or a channel named `chess` has a different key, it reports the problem
+without replacing a channel. It also refuses installation in licensed amateur radio
+mode. If a radio write fails, reconnect to retry.
+
+MQTT uplink and downlink are disabled for the channel when it is added. Both players
+must use compatible LoRa settings to hear each other. The channel is for public
+chat and finding opponents; invitations and every game action continue to travel
+as encrypted direct messages through the mesh, without an Internet game server.
 
 ### Archived Channels
 

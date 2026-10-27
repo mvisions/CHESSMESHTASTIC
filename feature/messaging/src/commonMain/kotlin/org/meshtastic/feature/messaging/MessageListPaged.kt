@@ -64,6 +64,7 @@ import org.meshtastic.core.model.Message
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.NodeAddress
 import org.meshtastic.core.model.Reaction
+import org.meshtastic.core.model.hasDisplayName
 import org.meshtastic.core.ui.component.ListScrollbar
 import org.meshtastic.feature.messaging.component.DateSeparator
 import org.meshtastic.feature.messaging.component.MessageItem
@@ -90,6 +91,8 @@ internal data class MessageListHandlers(
     val onUnreadChanged: (Long, Long) -> Unit,
     val onSendReaction: (String, Int) -> Unit,
     val onClickChip: (Node) -> Unit,
+    val onSendPrivateMessage: ((Node) -> Unit)? = null,
+    val onPlayChess: ((Node) -> Unit)? = null,
     val onDeleteMessages: (List<Long>) -> Unit,
     /** Replaces a failed message with a fresh send of its text; the action decides whether sending is allowed. */
     val onResendMessage: (Message) -> Unit,
@@ -159,11 +162,15 @@ internal fun MessageListPaged(
         )
     }
 
+    val reactorNames =
+        remember(state.nodes) { state.nodes.filter { it.hasDisplayName }.associate { it.user.id to it.displayName } }
+
     var showReactionDialog by remember { mutableStateOf<List<Reaction>?>(null) }
     showReactionDialog?.let { reactions ->
         ReactionDialog(
             reactions = reactions,
             myId = state.ourNode?.user?.id,
+            reactorNames = reactorNames,
             canReact = state.canReact,
             onDismiss = { showReactionDialog = null },
             onResend = { reaction ->
@@ -417,6 +424,8 @@ private fun RenderPagedChatMessageRow(
         onSelect = { state.selectedIds.toggle(message.uuid) },
         onDelete = { handlers.onDeleteMessages(listOf(message.uuid)) },
         onClickChip = handlers.onClickChip,
+        onSendPrivateMessage = handlers.onSendPrivateMessage,
+        onPlayChess = handlers.onPlayChess,
         resolveMention = resolveMention,
         onStatusClick = { onShowStatusDialog(message) },
         onReply = { handlers.onReply(message) },
