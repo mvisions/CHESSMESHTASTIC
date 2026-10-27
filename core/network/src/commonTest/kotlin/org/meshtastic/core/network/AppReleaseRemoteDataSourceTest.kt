@@ -118,6 +118,21 @@ class AppReleaseRemoteDataSourceTest {
     }
 
     @Test
+    fun renamedRepositoryDownloadIsAccepted() {
+        val next = release("6")
+        val renamed =
+            next.copy(
+                assets =
+                    listOf(
+                        next.assets
+                            .single()
+                            .copy(url = next.assets.single().url.replace("/Meshtastic-Android/", "/CHESSMESHTASTIC/")),
+                    ),
+            )
+        assertEquals(renamed.assets.single().url, selectAppUpdate("5", listOf(renamed)))
+    }
+
+    @Test
     fun emptyReleaseListIsAnErrorNotCurrent() {
         assertFailsWith<IllegalStateException> { selectAppUpdate("4", emptyList()) }
     }

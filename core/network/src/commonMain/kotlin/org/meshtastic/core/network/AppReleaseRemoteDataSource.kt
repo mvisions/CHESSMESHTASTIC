@@ -28,8 +28,14 @@ import kotlinx.serialization.json.Json
 import org.koin.core.annotation.Single
 import org.meshtastic.core.di.CoroutineDispatchers
 
-private const val RELEASES_API = "https://api.github.com/repos/mvisions/Meshtastic-Android/releases"
-private const val DOWNLOAD_PREFIX = "https://github.com/mvisions/Meshtastic-Android/releases/download/"
+private const val RELEASES_API = "https://api.github.com/repos/mvisions/CHESSMESHTASTIC/releases"
+
+// GitHub reports download URLs under the repository's current name; the fork was renamed from Meshtastic-Android.
+private val DOWNLOAD_PREFIXES =
+    listOf(
+        "https://github.com/mvisions/CHESSMESHTASTIC/releases/download/",
+        "https://github.com/mvisions/Meshtastic-Android/releases/download/",
+    )
 private const val UNIVERSAL_APK = "Meshtastic-media-universal.apk"
 private const val ARM64_APK = "Meshtastic-media-arm64.apk"
 private const val PAGE_SIZE = 100
@@ -84,7 +90,7 @@ internal fun selectAppUpdate(installed: String, releases: List<AppRelease>, arm6
                         it.name == apkName &&
                             it.state == "uploaded" &&
                             it.size > 0 &&
-                            it.url == "$DOWNLOAD_PREFIX${release.tag}/$apkName"
+                            DOWNLOAD_PREFIXES.any { prefix -> it.url == "$prefix${release.tag}/$apkName" }
                     }
                 if (version != null && asset != null) version to asset.url else null
             }
