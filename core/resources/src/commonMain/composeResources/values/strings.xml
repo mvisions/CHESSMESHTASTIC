@@ -222,6 +222,11 @@
     <!-- CHESS -->
     <string name="chess_accept">Accept</string>
     <string name="chess_accept_draw">Accept draw</string>
+    <string name="chess_channel_conflict">The chess channel has a different configuration. Existing channels were not changed.</string>
+    <string name="chess_channel_failed">Could not install the chess channel. Reconnect your node to retry.</string>
+    <string name="chess_channel_full">No free secondary channel slot for chess. Existing channels were not changed.</string>
+    <string name="chess_channel_installed">Added the public chess discovery channel. Games still use encrypted direct messages.</string>
+    <string name="chess_channel_licensed">The chess channel cannot be installed in licensed amateur radio mode.</string>
     <string name="chess_check">Check</string>
     <string name="chess_choose_promotion">Choose a promotion piece</string>
     <string name="chess_claim_fifty_move">Claim 50-move draw</string>

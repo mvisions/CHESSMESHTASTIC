@@ -27,6 +27,11 @@ import org.meshtastic.core.model.Node
 import org.meshtastic.core.model.effectiveLongName
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.UiText
+import org.meshtastic.core.resources.chess_channel_conflict
+import org.meshtastic.core.resources.chess_channel_failed
+import org.meshtastic.core.resources.chess_channel_full
+import org.meshtastic.core.resources.chess_channel_installed
+import org.meshtastic.core.resources.chess_channel_licensed
 import org.meshtastic.core.resources.chess_requires_key
 import org.meshtastic.core.ui.util.SnackbarManager
 import org.meshtastic.core.ui.viewmodel.errorEventFlow
@@ -35,8 +40,11 @@ import org.meshtastic.core.ui.viewmodel.stateInWhileSubscribed
 import org.meshtastic.feature.messaging.MessagingUiTextResolver
 
 @KoinViewModel
-class ChessGameViewModel(private val coordinator: ChessGameCoordinator, private val snackbarManager: SnackbarManager) :
-    ViewModel() {
+class ChessGameViewModel(
+    private val coordinator: ChessGameCoordinator,
+    private val snackbarManager: SnackbarManager,
+    private val channelInstaller: ChessChannelInstaller,
+) : ViewModel() {
     private val gameId = MutableStateFlow<String?>(null)
     private val errorEvents = errorEventFlow()
 
@@ -48,6 +56,22 @@ class ChessGameViewModel(private val coordinator: ChessGameCoordinator, private 
     init {
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             errorEvents.collect { snackbarManager.showSnackbar(MessagingUiTextResolver.resolve(it)) }
+        }
+        safeLaunch(errorEvents = errorEvents, tag = "chessChannel") {
+            channelInstaller.observe { result ->
+                val resource =
+                    when (result) {
+                        ChessChannelInstallResult.INSTALLED -> Res.string.chess_channel_installed
+                        ChessChannelInstallResult.NAME_CONFLICT -> Res.string.chess_channel_conflict
+                        ChessChannelInstallResult.NO_FREE_SLOT -> Res.string.chess_channel_full
+                        ChessChannelInstallResult.LICENSED_NODE -> Res.string.chess_channel_licensed
+                        ChessChannelInstallResult.FAILED -> Res.string.chess_channel_failed
+                        ChessChannelInstallResult.ALREADY_PRESENT -> null
+                    }
+                resource?.let {
+                    snackbarManager.showSnackbar(MessagingUiTextResolver.resolve(UiText.Resource(it)))
+                }
+            }
         }
     }
 

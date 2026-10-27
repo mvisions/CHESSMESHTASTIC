@@ -195,6 +195,11 @@ chemical_oxygen_demand
 ### CHESS ###
 chess_accept
 chess_accept_draw
+chess_channel_conflict
+chess_channel_failed
+chess_channel_full
+chess_channel_installed
+chess_channel_licensed
 chess_check
 chess_choose_promotion
 chess_claim_fifty_move
