@@ -802,6 +802,17 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="voice_speed">Velocidad de reproducción</string>
     <string name="voice_message">Mensaje de voz</string>
     <string name="voice_permission_denied">Se necesita permiso de micrófono para grabar mensajes de voz</string>
+    <string name="app_update_available">Nueva actualización disponible. Pulsa para descargar.</string>
+    <string name="fleet_fire">Disparar</string>
+    <string name="fleet_fire_at">Disparar a %1$s</string>
+    <string name="fleet_cooldown">Recargando: %1$d s</string>
+    <string name="fleet_reaction_hit">¡Acertaste!</string>
+    <string name="fleet_reaction_bravo">¡Bravo!</string>
+    <string name="fleet_reaction_gg">GG</string>
+    <string name="fleet_reaction_nice_move">¡Buena jugada!</string>
+    <string name="fleet_reaction_you">Tú: %1$s</string>
+    <string name="fleet_reaction_opponent">%1$s: %2$s</string>
+    <string name="fleet_reaction_wait">Radio recargando: %1$d s</string>
     <string name="app_update_check">Buscar actualización de la APK</string>
     <string name="app_update_checking">Buscando actualizaciones…</string>
     <string name="app_update_current">Está en la última versión</string>

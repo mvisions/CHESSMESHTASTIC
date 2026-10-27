@@ -16,20 +16,27 @@
  */
 package org.meshtastic.feature.messaging.games
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,12 +50,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.resources.stringResource
@@ -61,7 +75,10 @@ import org.meshtastic.core.resources.fleet_cell_pending
 import org.meshtastic.core.resources.fleet_cell_ship
 import org.meshtastic.core.resources.fleet_cell_unknown
 import org.meshtastic.core.resources.fleet_cell_water
+import org.meshtastic.core.resources.fleet_cooldown
 import org.meshtastic.core.resources.fleet_decline
+import org.meshtastic.core.resources.fleet_fire
+import org.meshtastic.core.resources.fleet_fire_at
 import org.meshtastic.core.resources.fleet_game_loading
 import org.meshtastic.core.resources.fleet_game_title
 import org.meshtastic.core.resources.fleet_invitation_message
@@ -80,6 +97,7 @@ import org.meshtastic.core.resources.fleet_result_won
 import org.meshtastic.core.resources.fleet_turn_waiting
 import org.meshtastic.core.resources.fleet_turn_yours
 import org.meshtastic.core.ui.component.MainAppBar
+import org.meshtastic.core.ui.theme.StatusColors.StatusBlue
 
 private val FLEET_CELL_SIZE = 48.dp
 
@@ -151,36 +169,29 @@ fun FleetGameScreen(
             }
         } else {
             Column(
-                modifier =
-                Modifier.fillMaxWidth().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(padding).padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(session.opponentName, style = MaterialTheme.typography.titleMedium)
-                Text(statusText(session), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                Text(stringResource(Res.string.fleet_opponent_board), style = MaterialTheme.typography.titleSmall)
-                FleetBoardGrid(
-                    board = session.board,
-                    shots = session.incomingShots,
-                    shotResults = session.outgoingResults,
-                    outgoingShot = session.outgoingShot,
-                    ownBoard = false,
-                    enabled =
-                    session.phase == FleetGamePhase.PLAYING &&
-                        session.localTurn &&
-                        session.pendingResult?.allShipsSunk != true,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(session.opponentName, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        statusText(session),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End,
+                    )
+                }
+                FleetBoards(
+                    session,
                     onCellClick = { viewModel.fireShot(gameId, it) },
+                    modifier = Modifier.weight(1f),
                 )
-                Text(stringResource(Res.string.fleet_my_board), style = MaterialTheme.typography.titleSmall)
-                FleetBoardGrid(
-                    board = session.board,
-                    shots = session.incomingShots,
-                    shotResults = session.outgoingResults,
-                    outgoingShot = session.outgoingShot,
-                    ownBoard = true,
-                    enabled = false,
-                    onCellClick = {},
-                )
+                FleetReactions(session, onReaction = { viewModel.sendReaction(gameId, it) })
                 when {
                     session.pendingResult?.allShipsSunk == true && session.phase == FleetGamePhase.PLAYING -> {
                         TextButton(onClick = { viewModel.reportDefeat(gameId) }) {
@@ -222,7 +233,116 @@ fun FleetGameScreen(
 }
 
 @Composable
-private fun FleetBoardGrid(
+internal fun FleetBoards(session: FleetGameSession, onCellClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+    var selectedCell by rememberSaveable(session.gameId, session.turn) { mutableStateOf<Int?>(null) }
+    val remainingSeconds = rememberFleetCountdown(session.lastShotAt, FLEET_SHOT_INTERVAL)
+    val canFire = remainingSeconds == 0 && session.canFireShot
+    val fireControl: @Composable () -> Unit = {
+        Button(
+            enabled = canFire && selectedCell != null,
+            onClick = {
+                selectedCell
+                    ?.takeIf { canFire }
+                    ?.let {
+                        selectedCell = null
+                        onCellClick(it)
+                    }
+            },
+        ) {
+            Text(
+                if (remainingSeconds > 0) {
+                    stringResource(Res.string.fleet_cooldown, remainingSeconds)
+                } else {
+                    selectedCell?.let {
+                        stringResource(Res.string.fleet_fire_at, fleetCoordinate(it))
+                    } ?: stringResource(Res.string.fleet_fire)
+                },
+            )
+        }
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        if (maxWidth >= 600.dp && maxWidth > maxHeight) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FleetBoardPanel(
+                    session,
+                    false,
+                    canFire,
+                    selectedCell,
+                    { selectedCell = it },
+                    Modifier.weight(1f),
+                    action = fireControl,
+                )
+                FleetBoardPanel(session, true, false, null, {}, Modifier.weight(1f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FleetBoardPanel(
+                    session,
+                    false,
+                    canFire,
+                    selectedCell,
+                    { selectedCell = it },
+                    Modifier.weight(1f),
+                    action = fireControl,
+                )
+                FleetBoardPanel(session, true, false, null, {}, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetBoardPanel(
+    session: FleetGameSession,
+    ownBoard: Boolean,
+    enabled: Boolean,
+    selectedCell: Int?,
+    onCellClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit = {},
+) {
+    Row(
+        modifier.background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.width(72.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                stringResource(if (ownBoard) Res.string.fleet_my_board else Res.string.fleet_opponent_board),
+                style = MaterialTheme.typography.titleSmall,
+                textAlign = TextAlign.Center,
+            )
+            action()
+        }
+        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            val cellWidth = (maxWidth - 20.dp).coerceAtLeast(0.dp) / FLEET_BOARD_SIZE
+            val cellSize =
+                minOf(
+                    cellWidth,
+                    maxHeight / (FLEET_BOARD_SIZE + 1),
+                )
+            FleetBoardGrid(
+                board = session.board,
+                shots = session.incomingShots,
+                shotResults = session.outgoingResults,
+                outgoingShot = session.outgoingShot,
+                ownBoard = ownBoard,
+                enabled = enabled,
+                onCellClick = onCellClick,
+                cellSize = cellSize,
+                cellWidth = cellWidth,
+                selectedCell = selectedCell,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun FleetBoardGrid(
     board: FleetBoard,
     shots: Set<Int>,
     shotResults: Map<Int, FleetShotResult>,
@@ -230,14 +350,17 @@ private fun FleetBoardGrid(
     ownBoard: Boolean,
     enabled: Boolean,
     onCellClick: (Int) -> Unit,
+    cellSize: Dp = FLEET_CELL_SIZE,
+    selectedCell: Int? = null,
+    cellWidth: Dp = cellSize,
 ) {
     Column(modifier = Modifier.horizontalScroll(rememberScrollState())) {
         Row {
-            Box(modifier = Modifier.size(24.dp))
+            Box(modifier = Modifier.size(20.dp))
             repeat(FLEET_BOARD_SIZE) { column ->
                 Text(
                     text = ('A'.code + column).toChar().toString(),
-                    modifier = Modifier.size(FLEET_CELL_SIZE),
+                    modifier = Modifier.size(width = cellWidth, height = cellSize),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -248,7 +371,7 @@ private fun FleetBoardGrid(
                 Text(
                     text = (row + 1).toString(),
                     modifier =
-                    Modifier.size(width = 24.dp, height = FLEET_CELL_SIZE)
+                    Modifier.size(width = 20.dp, height = cellSize)
                         .wrapContentHeight(align = Alignment.CenterVertically),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.labelSmall,
@@ -257,8 +380,6 @@ private fun FleetBoardGrid(
                     val cell = row * FLEET_BOARD_SIZE + column
                     FleetBoardCell(
                         cell = cell,
-                        row = row,
-                        column = column,
                         board = board,
                         shots = shots,
                         shotResults = shotResults,
@@ -266,6 +387,9 @@ private fun FleetBoardGrid(
                         ownBoard = ownBoard,
                         enabled = enabled,
                         onCellClick = onCellClick,
+                        cellSize = cellSize,
+                        cellWidth = cellWidth,
+                        isSelected = selectedCell == cell,
                     )
                 }
             }
@@ -276,8 +400,6 @@ private fun FleetBoardGrid(
 @Composable
 private fun FleetBoardCell(
     cell: Int,
-    row: Int,
-    column: Int,
     board: FleetBoard,
     shots: Set<Int>,
     shotResults: Map<Int, FleetShotResult>,
@@ -285,33 +407,124 @@ private fun FleetBoardCell(
     ownBoard: Boolean,
     enabled: Boolean,
     onCellClick: (Int) -> Unit,
+    cellSize: Dp,
+    cellWidth: Dp,
+    isSelected: Boolean,
 ) {
     val result = shotResults[cell]
     val isHit = cell in shots && cell in board.occupiedCells
     val isShot = cell in shots
     val isShip = cell in board.occupiedCells
     val presentation = fleetCellPresentation(ownBoard, isHit, isShot, isShip, result, cell == outgoingShot)
-    val coordinate = "${('A'.code + column).toChar()}${row + 1}"
+    val coordinate = fleetCoordinate(cell)
     val cellDescription = stringResource(Res.string.fleet_board_cell, coordinate, presentation.description)
     val isClickable = enabled && result == null && cell != outgoingShot
     Box(
         modifier =
-        Modifier.size(FLEET_CELL_SIZE)
-            .padding(1.dp)
+        Modifier.size(width = cellWidth, height = cellSize)
             .background(presentation.background, MaterialTheme.shapes.extraSmall)
+            .border(
+                if (isSelected) 2.dp else 1.dp,
+                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                MaterialTheme.shapes.extraSmall,
+            )
             .then(if (isClickable) Modifier.clickable(role = Role.Button) { onCellClick(cell) } else Modifier)
             .semantics(mergeDescendants = true) {
                 contentDescription = cellDescription
+                selected = isSelected
                 if (isClickable) role = Role.Button
             },
         contentAlignment = Alignment.Center,
     ) {
+        FleetSea(Modifier.matchParentSize())
+        if (ownBoard && isShip) {
+            val ship = board.ships.first { cell in it.cells }
+            FleetShipSegment(ship, cell, Modifier.matchParentSize())
+        }
         Text(
             text = presentation.glyph,
+            modifier =
+            if (ownBoard && isHit) {
+                Modifier.background(MaterialTheme.colorScheme.errorContainer, CircleShape).padding(4.dp)
+            } else {
+                Modifier
+            },
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            color =
+            if (ownBoard && isHit) {
+                MaterialTheme.colorScheme.onErrorContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+private fun fleetCoordinate(cell: Int): String =
+    "${('A'.code + cell % FLEET_BOARD_SIZE).toChar()}${cell / FLEET_BOARD_SIZE + 1}"
+
+@Composable
+@Suppress("MagicNumber")
+private fun FleetSea(modifier: Modifier = Modifier) {
+    val waveColor = MaterialTheme.colorScheme.StatusBlue.copy(alpha = 0.3f)
+    Canvas(modifier) {
+        val waves =
+            Path().apply {
+                for (height in listOf(0.25f, 0.75f)) {
+                    moveTo(size.width * 0.1f, size.height * height)
+                    cubicTo(
+                        size.width * 0.35f,
+                        size.height * (height - 0.2f),
+                        size.width * 0.65f,
+                        size.height * (height + 0.2f),
+                        size.width * 0.9f,
+                        size.height * height,
+                    )
+                }
+            }
+        drawPath(waves, waveColor, style = Stroke(width = 1.dp.toPx()))
+    }
+}
+
+@Composable
+@Suppress("MagicNumber")
+private fun FleetShipSegment(ship: FleetShip, cell: Int, modifier: Modifier = Modifier) {
+    val hullColor = MaterialTheme.colorScheme.primary
+    val deckColor = MaterialTheme.colorScheme.onPrimary
+    val first = ship.cells.min()
+    val last = ship.cells.max()
+    val vertical = last - first >= FLEET_BOARD_SIZE
+    Canvas(modifier) {
+        rotate(if (vertical) 90f else 0f) {
+            val width = if (vertical) size.height else size.width
+            val height = if (vertical) size.width else size.height
+            val shiftX = (size.width - width) / 2f
+            val shiftY = (size.height - height) / 2f
+            drawContext.transform.translate(shiftX, shiftY)
+            val stern = if (cell == first) width * 0.12f else 0f
+            val hull =
+                Path().apply {
+                    moveTo(stern, height * 0.22f)
+                    if (cell == last) {
+                        lineTo(width * 0.6f, height * 0.22f)
+                        quadraticTo(width * 0.85f, height * 0.28f, width * 0.96f, height * 0.5f)
+                        quadraticTo(width * 0.85f, height * 0.72f, width * 0.6f, height * 0.78f)
+                    } else {
+                        lineTo(width, height * 0.22f)
+                        lineTo(width, height * 0.78f)
+                    }
+                    lineTo(stern, height * 0.78f)
+                    close()
+                }
+            drawPath(hull, hullColor)
+            drawRect(
+                color = deckColor,
+                topLeft = Offset(width * 0.25f, height * 0.36f),
+                size = Size(width * 0.3f, height * 0.28f),
+            )
+            drawContext.transform.translate(-shiftX, -shiftY)
+        }
     }
 }
 
@@ -341,15 +554,15 @@ private fun fleetCellPresentation(
     ownBoard && isShip ->
         FleetCellPresentation(
             stringResource(Res.string.fleet_cell_ship),
-            "■",
-            MaterialTheme.colorScheme.primaryContainer,
+            "",
+            MaterialTheme.colorScheme.StatusBlue.copy(alpha = 0.12f),
         )
 
     ownBoard ->
         FleetCellPresentation(
             stringResource(Res.string.fleet_cell_water),
             "",
-            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.StatusBlue.copy(alpha = 0.12f),
         )
 
     result?.hit == true ->
@@ -377,7 +590,7 @@ private fun fleetCellPresentation(
         FleetCellPresentation(
             stringResource(Res.string.fleet_cell_unknown),
             "",
-            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.StatusBlue.copy(alpha = 0.12f),
         )
 }
 

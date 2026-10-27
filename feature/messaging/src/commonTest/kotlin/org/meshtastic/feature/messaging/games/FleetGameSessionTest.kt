@@ -18,7 +18,12 @@ package org.meshtastic.feature.messaging.games
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 class FleetGameSessionTest {
     @Test
@@ -58,6 +63,48 @@ class FleetGameSessionTest {
         assertEquals(setOf(44), updated?.incomingShots)
         assertEquals(FleetShotResult(hit = false), updated?.pendingResult)
         assertEquals(true, updated?.localTurn)
+        assertNull(updated?.outgoingShot)
+    }
+
+    @Test
+    fun nextShotNeedsBothThirtySecondsAndTheOpponentsAttack() {
+        val clock = TestTimeSource()
+        val awaitingReply = session(localTurn = false, turn = 1, outgoingShot = 42).copy(lastShotAt = clock.markNow())
+        assertFalse(awaitingReply.canFireShot)
+        val replied =
+            requireNotNull(
+                awaitingReply.applyTurn(
+                    FleetCommand.Turn(GAME_ID, 2, FleetShotResult(hit = false), 44),
+                    fromLocal = false,
+                ),
+            )
+        assertFalse(replied.canFireShot)
+        clock += 29.seconds + 999.milliseconds
+        assertFalse(replied.canFireShot)
+        clock += 1.milliseconds
+        assertTrue(replied.canFireShot)
+        assertFalse(awaitingReply.canFireShot)
+    }
+
+    @Test
+    fun allReactionButtonsShareOneMinuteCooldownAndDuplicatesAreIgnored() {
+        val clock = TestTimeSource()
+        val first = FleetCommand.Reaction(GAME_ID, 1, FleetReaction.BRAVO)
+        val second = FleetCommand.Reaction(GAME_ID, 2, FleetReaction.GG)
+        val sent = requireNotNull(session(true).applyReaction(first, true, clock.markNow()))
+        assertEquals(FleetGameReaction(FleetReaction.BRAVO, true), sent.latestReaction)
+        assertFalse(sent.canSendReaction)
+        assertNull(sent.applyReaction(first, true, clock.markNow()))
+        clock += 59.seconds + 999.milliseconds
+        assertNull(sent.applyReaction(second, true, clock.markNow()))
+        assertFalse(sent.canSendReaction)
+        clock += 1.milliseconds
+        assertTrue(sent.canSendReaction)
+        val next = requireNotNull(sent.applyReaction(second, true, clock.markNow()))
+        assertEquals(FleetGameReaction(FleetReaction.GG, true), next.latestReaction)
+        val received = requireNotNull(next.applyReaction(first, false, clock.markNow()))
+        assertEquals(FleetGameReaction(FleetReaction.BRAVO, false), received.latestReaction)
+        assertNull(received.applyReaction(second, false, clock.markNow()))
     }
 
     private fun session(localTurn: Boolean, turn: Int = 0, outgoingShot: Int? = null) = FleetGameSession(

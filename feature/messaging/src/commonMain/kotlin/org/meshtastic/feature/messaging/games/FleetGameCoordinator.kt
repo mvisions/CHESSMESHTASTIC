@@ -16,6 +16,7 @@
  */
 package org.meshtastic.feature.messaging.games
 
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,10 @@ import org.meshtastic.core.repository.PacketRepository
 import org.meshtastic.core.repository.usecase.SendMessageOutcome
 import org.meshtastic.core.repository.usecase.SendMessageUseCase
 import org.meshtastic.feature.messaging.chess.privateMessageContactKey
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 enum class FleetGamePhase {
     INVITING,
@@ -64,7 +69,40 @@ data class FleetGameSession(
     val outgoingResults: Map<Int, FleetShotResult> = emptyMap(),
     val pendingResult: FleetShotResult? = null,
     val result: FleetGameResult? = null,
-)
+    val lastShotAt: TimeMark? = null,
+    val lastReactionAt: TimeMark? = null,
+    val lastOpponentReactionAt: TimeMark? = null,
+    val localReactionSequence: Int = 0,
+    val opponentReactionSequence: Int = 0,
+    val latestReaction: FleetGameReaction? = null,
+) {
+    val shotCooldownRemaining: Duration
+        get() =
+            lastShotAt?.let { (FLEET_SHOT_INTERVAL - it.elapsedNow()).coerceAtLeast(Duration.ZERO) } ?: Duration.ZERO
+
+    val canFireShot: Boolean
+        get() =
+            phase == FleetGamePhase.PLAYING &&
+                localTurn &&
+                outgoingShot == null &&
+                pendingResult?.allShipsSunk != true &&
+                shotCooldownRemaining == Duration.ZERO
+
+    val reactionCooldownRemaining: Duration
+        get() =
+            lastReactionAt?.let { (FLEET_REACTION_INTERVAL - it.elapsedNow()).coerceAtLeast(Duration.ZERO) }
+                ?: Duration.ZERO
+
+    val canSendReaction: Boolean
+        get() =
+            (phase == FleetGamePhase.PLAYING || phase == FleetGamePhase.FINISHED) &&
+                reactionCooldownRemaining == Duration.ZERO
+}
+
+internal val FLEET_SHOT_INTERVAL = 30.seconds
+internal val FLEET_REACTION_INTERVAL = 60.seconds
+
+data class FleetGameReaction(val reaction: FleetReaction, val fromLocal: Boolean)
 
 data class FleetInvitation(val gameId: String, val contactKey: String, val opponentName: String)
 
@@ -156,7 +194,8 @@ class FleetGameCoordinator(
 
     suspend fun fireShot(gameId: String, cell: Int): Boolean = mutex.withLock {
         val game = _games.value[gameId] ?: return@withLock false
-        if (game.phase != FleetGamePhase.PLAYING || !game.localTurn || cell !in 0 until FLEET_BOARD_CELLS) {
+        if (!game.canFireShot || cell !in 0 until FLEET_BOARD_CELLS) {
+            Logger.w { "Fleet shot blocked: turn or cooldown is not ready" }
             return@withLock false
         }
         if (cell in game.outgoingResults || cell == game.outgoingShot) return@withLock false
@@ -168,6 +207,7 @@ class FleetGameCoordinator(
                 turn = command.turn,
                 outgoingShot = cell,
                 pendingResult = null,
+                lastShotAt = TimeSource.Monotonic.markNow(),
             ),
         )
         true
@@ -178,6 +218,18 @@ class FleetGameCoordinator(
         if (game.phase != FleetGamePhase.PLAYING) return@withLock false
         sendCommand(game.contactKey, FleetCommand.Resign(gameId))
         putGame(game.copy(phase = FleetGamePhase.FINISHED, result = FleetGameResult.RESIGNED))
+        true
+    }
+
+    suspend fun sendReaction(gameId: String, reaction: FleetReaction): Boolean = mutex.withLock {
+        val game = _games.value[gameId] ?: return@withLock false
+        if (!game.canSendReaction) {
+            Logger.w { "Fleet reaction blocked: game or cooldown is not ready" }
+            return@withLock false
+        }
+        val command = FleetCommand.Reaction(gameId, game.localReactionSequence + 1, reaction)
+        sendCommand(game.contactKey, command)
+        putGame(requireNotNull(game.applyReaction(command, fromLocal = true)))
         true
     }
 
@@ -222,6 +274,12 @@ class FleetGameCoordinator(
             is FleetCommand.Decline -> processDecline(command, message, game)
 
             is FleetCommand.Turn -> processTurn(game, command, message)
+
+            is FleetCommand.Reaction -> {
+                if (game?.contactKey == contactKey) {
+                    game.applyReaction(command, message.fromLocal)?.let(::putGame)
+                }
+            }
 
             is FleetCommand.Resign ->
                 if (game?.phase == FleetGamePhase.PLAYING) {
@@ -368,6 +426,36 @@ internal fun FleetGameSession.applyTurn(command: FleetCommand.Turn, fromLocal: B
         localTurn = true,
         incomingShots = incomingShots,
         outgoingResults = outgoingResults,
+        outgoingShot = null,
         pendingResult = result,
     )
+}
+
+@Suppress("ReturnCount")
+internal fun FleetGameSession.applyReaction(
+    command: FleetCommand.Reaction,
+    fromLocal: Boolean,
+    now: TimeMark = TimeSource.Monotonic.markNow(),
+): FleetGameSession? {
+    if (command.gameId != gameId || (phase != FleetGamePhase.PLAYING && phase != FleetGamePhase.FINISHED)) return null
+    val previousSequence = if (fromLocal) localReactionSequence else opponentReactionSequence
+    if (command.sequence <= previousSequence) return null
+    val lastSent = if (fromLocal) lastReactionAt else lastOpponentReactionAt
+    if (lastSent != null && lastSent.elapsedNow() < FLEET_REACTION_INTERVAL) {
+        Logger.w { "Fleet reaction ignored during cooldown" }
+        return null
+    }
+    return if (fromLocal) {
+        copy(
+            lastReactionAt = now,
+            localReactionSequence = command.sequence,
+            latestReaction = FleetGameReaction(command.reaction, true),
+        )
+    } else {
+        copy(
+            lastOpponentReactionAt = now,
+            opponentReactionSequence = command.sequence,
+            latestReaction = FleetGameReaction(command.reaction, false),
+        )
+    }
 }

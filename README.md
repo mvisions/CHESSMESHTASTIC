@@ -28,6 +28,22 @@ Highlights of the 2.8 line:
 - **Air-quality telemetry** — PM1.0, PM2.5, PM10, and CO₂ readings from supported sensors.
 - **App Functions / system-AI integration** so on-device assistants can trigger common workflows.
 
+## Games in this fork
+
+The Games menu in a private conversation offers Chess and Battleship with illustrated game cards.
+Games use private messages and do not automatically create or migrate radio channels. Existing
+channels, including VIP and any previously installed games or chess channel, are left unchanged.
+Battleship shows the targeting board above your own fleet on phones (side by side in wide layouts).
+Both grids use the available space with rectangular cells when height is limited. Titles and the
+fire control sit alongside the grids to leave more height for the boards.
+Your ships and received hits are visible; the opponent's ships remain hidden. Select a grid square and
+confirm **Fire** to attack. Each shot starts a 30-second reload, and the next shot also requires the
+opponent's reply and attack. Quick reactions such as **Bravo!** and **GG** appear inside the game and
+share a 60-second cooldown per player per game. Both players need a version supporting reactions.
+
+On Android, Settings checks for app updates when opened. The update row turns green only when a
+newer downloadable release exists. Opening the APK download is an explicit action, not an automatic download.
+
 ## Get Meshtastic
 
 The fastest way to get releases is [GitHub releases](https://github.com/meshtastic/Meshtastic-Android/releases); pair them with [Obtainium](https://github.com/ImranR98/Obtainium) for automatic updates.

@@ -75,6 +75,10 @@ class FleetGameViewModel(private val coordinator: FleetGameCoordinator, private 
         safeLaunch(errorEvents = errorEvents, tag = "fleetResign") { coordinator.resign(gameId) }
     }
 
+    fun sendReaction(gameId: String, reaction: FleetReaction) {
+        safeLaunch(errorEvents = errorEvents, tag = "fleetReaction") { coordinator.sendReaction(gameId, reaction) }
+    }
+
     fun reportDefeat(gameId: String) {
         safeLaunch(errorEvents = errorEvents, tag = "fleetReportDefeat") { coordinator.reportDefeat(gameId) }
     }

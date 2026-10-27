@@ -102,6 +102,7 @@ app_support_error
 app_support_report
 app_support_subject
 app_too_old
+app_update_available
 app_update_check
 app_update_checking
 app_update_current
@@ -860,7 +861,10 @@ fleet_cell_pending
 fleet_cell_ship
 fleet_cell_unknown
 fleet_cell_water
+fleet_cooldown
 fleet_decline
+fleet_fire
+fleet_fire_at
 fleet_game_description
 fleet_game_loading
 fleet_game_title
@@ -868,6 +872,13 @@ fleet_invitation_message
 fleet_invitation_title
 fleet_my_board
 fleet_opponent_board
+fleet_reaction_bravo
+fleet_reaction_gg
+fleet_reaction_hit
+fleet_reaction_nice_move
+fleet_reaction_opponent
+fleet_reaction_wait
+fleet_reaction_you
 fleet_report_defeat
 fleet_resign
 fleet_resign_confirmation

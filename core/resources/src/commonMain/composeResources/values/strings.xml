@@ -123,6 +123,7 @@
     <string name="app_support_report">Report an app error</string>
     <string name="app_support_subject">Meshtastic media - Error report - %1$s</string>
     <string name="app_too_old">Application update required</string>
+    <string name="app_update_available">New update available. Tap to download.</string>
     <string name="app_update_check">Check for app updates</string>
     <string name="app_update_checking">Checking for updates…</string>
     <string name="app_update_current">You are on the latest version</string>
@@ -896,7 +897,10 @@
     <string name="fleet_cell_ship">ship</string>
     <string name="fleet_cell_unknown">not fired at</string>
     <string name="fleet_cell_water">water</string>
+    <string name="fleet_cooldown">Reloading: %1$d s</string>
     <string name="fleet_decline">Decline</string>
+    <string name="fleet_fire">Fire</string>
+    <string name="fleet_fire_at">Fire at %1$s</string>
     <string name="fleet_game_description">Play Battleship with a randomly generated fleet over private mesh messages.</string>
     <string name="fleet_game_loading">Loading game...</string>
     <string name="fleet_game_title">Battleship</string>
@@ -904,6 +908,13 @@
     <string name="fleet_invitation_title">Battleship invitation</string>
     <string name="fleet_my_board">Your fleet</string>
     <string name="fleet_opponent_board">Opponent's fleet</string>
+    <string name="fleet_reaction_bravo">Bravo!</string>
+    <string name="fleet_reaction_gg">GG</string>
+    <string name="fleet_reaction_hit">Nice hit!</string>
+    <string name="fleet_reaction_nice_move">Nice move!</string>
+    <string name="fleet_reaction_opponent">%1$s: %2$s</string>
+    <string name="fleet_reaction_wait">Radio recharging: %1$d s</string>
+    <string name="fleet_reaction_you">You: %1$s</string>
     <string name="fleet_report_defeat">Report defeat</string>
     <string name="fleet_resign">Resign</string>
     <string name="fleet_resign_confirmation">Are you sure you want to resign this game?</string>

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -34,19 +35,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.fleet_game_description
 import org.meshtastic.core.resources.fleet_game_title
 import org.meshtastic.core.resources.games_chess
+import org.meshtastic.core.resources.games_chess_art
 import org.meshtastic.core.resources.games_chess_description
 import org.meshtastic.core.resources.games_choose_opponent
 import org.meshtastic.core.resources.games_choose_title
+import org.meshtastic.core.resources.games_fleet_art
 import org.meshtastic.core.resources.games_menu
 import org.meshtastic.core.resources.games_vip_background
 import org.meshtastic.core.ui.component.MainAppBar
@@ -82,6 +87,7 @@ fun GameSelectionScreen(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
             )
             GameSelectionContent(
                 opponentName = opponentName,
@@ -127,11 +133,13 @@ private fun GameChoiceCards(isWide: Boolean, onSelectChess: () -> Unit, onSelect
                 title = stringResource(Res.string.games_chess),
                 description = stringResource(Res.string.games_chess_description),
                 onClick = onSelectChess,
+                artwork = Res.drawable.games_chess_art,
             ),
             GameChoiceOption(
                 title = stringResource(Res.string.fleet_game_title),
                 description = stringResource(Res.string.fleet_game_description),
                 onClick = onSelectFleet,
+                artwork = Res.drawable.games_fleet_art,
             ),
         )
     if (isWide) {
@@ -154,22 +162,34 @@ private fun GameChoiceCard(option: GameChoiceOption, modifier: Modifier = Modifi
         tonalElevation = 4.dp,
         shadowElevation = 2.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(option.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-            Text(
-                option.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+            Image(
+                painter = painterResource(option.artwork),
+                contentDescription = null,
+                modifier = Modifier.size(80.dp, 64.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
             )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(option.title, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    option.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
-private data class GameChoiceOption(val title: String, val description: String, val onClick: () -> Unit)
+private data class GameChoiceOption(
+    val title: String,
+    val description: String,
+    val onClick: () -> Unit,
+    val artwork: DrawableResource,
+)
 
 private val GAME_CHOICES_ROW_BREAKPOINT = 600.dp

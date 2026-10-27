@@ -29,6 +29,15 @@ sealed interface FleetCommand {
         FleetCommand
 
     data class Resign(override val gameId: String) : FleetCommand
+
+    data class Reaction(override val gameId: String, val sequence: Int, val reaction: FleetReaction) : FleetCommand
+}
+
+enum class FleetReaction {
+    HIT,
+    BRAVO,
+    GG,
+    NICE_MOVE,
 }
 
 object FleetProtocol {
@@ -44,6 +53,11 @@ object FleetProtocol {
             is FleetCommand.Decline -> "$PREFIX|D|${command.gameId}"
 
             is FleetCommand.Resign -> "$PREFIX|R|${command.gameId}"
+
+            is FleetCommand.Reaction -> {
+                require(command.sequence > 0)
+                "$PREFIX|E|${command.gameId}|${command.sequence}|${command.reaction.name}"
+            }
 
             is FleetCommand.Turn -> {
                 require(command.turn > 0)
@@ -69,10 +83,22 @@ object FleetProtocol {
         val gameId = parts[GAME_ID_FIELD]
         return when (parts[COMMAND_TYPE_FIELD]) {
             "I" -> if (parts.size == SIMPLE_COMMAND_FIELDS) FleetCommand.Invite(gameId) else null
+
             "A" -> if (parts.size == SIMPLE_COMMAND_FIELDS) FleetCommand.Accept(gameId) else null
+
             "D" -> if (parts.size == SIMPLE_COMMAND_FIELDS) FleetCommand.Decline(gameId) else null
+
             "R" -> if (parts.size == SIMPLE_COMMAND_FIELDS) FleetCommand.Resign(gameId) else null
+
             "T" -> decodeTurn(parts, gameId)
+
+            "E" -> {
+                if (parts.size != REACTION_FIELD_COUNT) return null
+                val sequence = parts[TURN_FIELD].toIntOrNull()?.takeIf { it > 0 } ?: return null
+                val reaction = FleetReaction.entries.firstOrNull { it.name == parts[RESULT_FIELD] } ?: return null
+                FleetCommand.Reaction(gameId, sequence, reaction)
+            }
+
             else -> null
         }
     }
@@ -132,6 +158,7 @@ private const val MAX_GAME_ID_LENGTH = 32
 private const val MIN_COMMAND_FIELDS = 3
 private const val SIMPLE_COMMAND_FIELDS = 3
 private const val TURN_FIELD_COUNT = 6
+private const val REACTION_FIELD_COUNT = 5
 private const val PREFIX_FIELD = 0
 private const val COMMAND_TYPE_FIELD = 1
 private const val GAME_ID_FIELD = 2

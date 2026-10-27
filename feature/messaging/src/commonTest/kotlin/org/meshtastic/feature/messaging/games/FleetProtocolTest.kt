@@ -53,6 +53,8 @@ class FleetProtocolTest {
                     attack = null,
                 ),
                 FleetCommand.Resign(GAME_ID),
+                FleetCommand.Reaction(GAME_ID, 1, FleetReaction.HIT),
+                FleetCommand.Reaction(GAME_ID, 2, FleetReaction.GG),
             )
 
         commands.forEach { command -> assertEquals(command, FleetProtocol.decode(FleetProtocol.encode(command))) }
@@ -67,6 +69,9 @@ class FleetProtocolTest {
         assertNull(FleetProtocol.decode("FLEET/1|T|$GAME_ID|1|S1|5"))
         assertNull(FleetProtocol.decode("FLEET/1|T|$GAME_ID|1|W|5"))
         assertNull(FleetProtocol.decode("FLEET/1|I|$GAME_ID|unexpected"))
+        assertNull(FleetProtocol.decode("FLEET/1|E|$GAME_ID|0|GG"))
+        assertNull(FleetProtocol.decode("FLEET/1|E|$GAME_ID|1|arbitrary text"))
+        assertNull(FleetProtocol.decode("FLEET/1|E|$GAME_ID|1|GG|extra"))
     }
 
     private companion object {
