@@ -24,9 +24,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -55,8 +56,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -337,26 +338,27 @@ private fun ChessBoard(
     onSquareClick: (Int) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val boardWidth = maxWidth.coerceAtMost(MAX_BOARD_WIDTH).coerceAtLeast(MIN_BOARD_WIDTH)
-        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.Center) {
-            Column(modifier = Modifier.width(boardWidth)) {
-                val ranks = if (localSide == ChessSide.WHITE) BOARD_INDEX downTo 0 else 0..BOARD_INDEX
-                val files = if (localSide == ChessSide.WHITE) 0..BOARD_INDEX else BOARD_INDEX downTo 0
-                ranks.forEach { rank ->
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        files.forEach { file ->
-                            val square = rank * BOARD_WIDTH + file
-                            ChessSquare(
-                                square = square,
-                                piece = position.pieceAt(square),
-                                isLight = (file + rank) % 2 == 0,
-                                isSelected = square == selectedSquare,
-                                isPossibleMove = possibleMoves.any { it.to == square },
-                                enabled = enabled,
-                                onClick = { onSquareClick(square) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
+        // Fit the whole board to the screen; a fixed minimum width clipped the last file on narrow phones.
+        val boardWidth = maxWidth.coerceAtMost(MAX_BOARD_WIDTH)
+        val pieceSize = with(LocalDensity.current) { (boardWidth / BOARD_WIDTH * PIECE_SCALE).toSp() }
+        Column(modifier = Modifier.width(boardWidth)) {
+            val ranks = if (localSide == ChessSide.WHITE) BOARD_INDEX downTo 0 else 0..BOARD_INDEX
+            val files = if (localSide == ChessSide.WHITE) 0..BOARD_INDEX else BOARD_INDEX downTo 0
+            ranks.forEach { rank ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    files.forEach { file ->
+                        val square = rank * BOARD_WIDTH + file
+                        ChessSquare(
+                            square = square,
+                            piece = position.pieceAt(square),
+                            isLight = (file + rank) % 2 == 0,
+                            isSelected = square == selectedSquare,
+                            isPossibleMove = possibleMoves.any { it.to == square },
+                            enabled = enabled,
+                            onClick = { onSquareClick(square) },
+                            pieceSize = pieceSize,
+                            modifier = Modifier.weight(1f).aspectRatio(1f),
+                        )
                     }
                 }
             }
@@ -373,6 +375,7 @@ private fun ChessSquare(
     isPossibleMove: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    pieceSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
     val background =
@@ -398,7 +401,6 @@ private fun ChessSquare(
     Box(
         modifier =
         modifier
-            .sizeIn(minWidth = MIN_SQUARE_TOUCH_SIZE, minHeight = MIN_SQUARE_TOUCH_SIZE)
             .background(background, RoundedCornerShape(2.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics {
@@ -412,7 +414,7 @@ private fun ChessSquare(
             Text(
                 text = it.glyph(),
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = PIECE_FONT_SIZE,
+                fontSize = pieceSize,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -541,7 +543,5 @@ private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60
 private const val LOW_TIME_SECONDS = 30
 private const val CLOCK_TICK_MILLIS = 1_000L
-private val MIN_BOARD_WIDTH = 352.dp
 private val MAX_BOARD_WIDTH = 480.dp
-private val MIN_SQUARE_TOUCH_SIZE = 44.dp
-private val PIECE_FONT_SIZE = 32.sp
+private const val PIECE_SCALE = 0.7f
