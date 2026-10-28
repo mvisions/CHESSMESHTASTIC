@@ -106,8 +106,17 @@ app_update_available
 app_update_check
 app_update_checking
 app_update_current
+app_update_download
+app_update_downloading
 app_update_error
+app_update_install
+app_update_installed
+app_update_not_installed
 app_update_opening
+app_update_permission
+app_update_ready
+app_update_target
+app_update_verifying
 app_version
 apply
 apps
@@ -854,6 +863,7 @@ firmware_version
 fixed_position
 ### FLEET ###
 fleet_accept
+fleet_aim
 fleet_board_cell
 fleet_cell_hit
 fleet_cell_miss
@@ -875,7 +885,9 @@ fleet_opponent_board
 fleet_reaction_bravo
 fleet_reaction_gg
 fleet_reaction_hit
+fleet_reaction_hit_short
 fleet_reaction_nice_move
+fleet_reaction_nice_move_short
 fleet_reaction_opponent
 fleet_reaction_wait
 fleet_reaction_you
@@ -888,6 +900,9 @@ fleet_result_miss
 fleet_result_resigned
 fleet_result_sunk
 fleet_result_won
+fleet_target_choose_area
+fleet_target_choose_cell
+fleet_target_overview
 fleet_turn_waiting
 fleet_turn_yours
 for_more_information_see_our_privacy_policy

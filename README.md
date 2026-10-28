@@ -33,16 +33,23 @@ Highlights of the 2.8 line:
 The Games menu in a private conversation offers Chess and Battleship with illustrated game cards.
 Games use private messages and do not automatically create or migrate radio channels. Existing
 channels, including VIP and any previously installed games or chess channel, are left unchanged.
-Battleship shows the targeting board above your own fleet on phones (side by side in wide layouts).
-Both grids use the available space with rectangular cells when height is limited. Titles and the
-fire control sit alongside the grids to leave more height for the boards.
+Battleship shows your own fleet as a single large board with an **Aim** button.
+Cells stay square, and long opponent names and status text are bounded so they cannot squeeze the board.
+**Aim** opens a separate targeting view without status or instruction text, hiding your fleet and reactions to give the complete
+targeting board more space. You can inspect areas while waiting for the opponent, but cannot select or fire.
+Tap an area to enlarge its 3 × 3 squares, then select a square when it is your turn and confirm
+**Fire**. **Full board** returns to the complete view. The overview never fires or selects shots.
 Your ships and received hits are visible; the opponent's ships remain hidden. Select a grid square and
 confirm **Fire** to attack. Each shot starts a 30-second reload, and the next shot also requires the
 opponent's reply and attack. Quick reactions such as **Bravo!** and **GG** appear inside the game and
 share a 60-second cooldown per player per game. Both players need a version supporting reactions.
 
 On Android, Settings checks for app updates when opened. The update row turns green only when a
-newer downloadable release exists. Opening the APK download is an explicit action, not an automatic download.
+newer downloadable release exists. **Download** starts a version-named, app-managed APK download
+with percentage progress. The download survives leaving Settings or restarting the app. Before
+**Install** is enabled, size, SHA-256, package, version and signing certificates are checked.
+Android asks for installation permission and confirmation; returning without installing does not
+count as success. Settings reads the actual installed version to confirm an update.
 
 ## Get Meshtastic
 

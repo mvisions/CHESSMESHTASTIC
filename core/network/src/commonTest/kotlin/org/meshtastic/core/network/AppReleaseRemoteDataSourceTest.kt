@@ -42,6 +42,7 @@ class AppReleaseRemoteDataSourceTest {
                     "https://github.com/mvisions/Meshtastic-Android/releases/download/$tag/Meshtastic-media-arm64.apk",
                     "uploaded",
                     100,
+                    "sha256:" + "a".repeat(64),
                 ),
             ),
         )
@@ -56,7 +57,7 @@ class AppReleaseRemoteDataSourceTest {
     fun partFiveOpensExactPartSixArm64Download() {
         assertEquals(
             "https://github.com/mvisions/Meshtastic-Android/releases/download/media-links-test-6/Meshtastic-media-arm64.apk",
-            selectAppUpdate("5", listOf(release("6"), release("5"))),
+            selectAppUpdate("5", listOf(release("6"), release("5")))?.url,
         )
     }
 
@@ -70,7 +71,10 @@ class AppReleaseRemoteDataSourceTest {
                     name = "Meshtastic-media-universal.apk",
                     url = next.assets.single().url.replace("-arm64.apk", "-universal.apk"),
                 )
-        assertEquals(universal.url, selectAppUpdate("5", listOf(next.copy(assets = listOf(universal))), arm64 = false))
+        assertEquals(
+            universal.url,
+            selectAppUpdate("5", listOf(next.copy(assets = listOf(universal))), arm64 = false)?.url,
+        )
     }
 
     @Test
@@ -81,13 +85,16 @@ class AppReleaseRemoteDataSourceTest {
     @Test
     fun latestIsChosenNumericallyNotByApiOrder() {
         val latest = release("10")
-        assertEquals(latest.assets.single().url, selectAppUpdate("4", listOf(release("9"), latest, release("4.1"))))
+        assertEquals(
+            latest.assets.single().url,
+            selectAppUpdate("4", listOf(release("9"), latest, release("4.1")))?.url,
+        )
     }
 
     @Test
     fun hotfixIsAnUpdate() {
         val next = release("4.1")
-        assertEquals(next.assets.single().url, selectAppUpdate("4", listOf(next)))
+        assertEquals(next.assets.single().url, selectAppUpdate("4", listOf(next))?.url)
     }
 
     @Test
@@ -129,7 +136,7 @@ class AppReleaseRemoteDataSourceTest {
                         .copy(url = next.assets.single().url.replace("/Meshtastic-Android/", "/CHESSMESHTASTIC/")),
                 ),
             )
-        assertEquals(renamed.assets.single().url, selectAppUpdate("5", listOf(renamed)))
+        assertEquals(renamed.assets.single().url, selectAppUpdate("5", listOf(renamed))?.url)
     }
 
     @Test
@@ -148,6 +155,7 @@ class AppReleaseRemoteDataSourceTest {
                     respond(
                         """[{"tag_name":"${next.tag}","draft":false,"prerelease":true,"assets":[{
                 "name":"Meshtastic-media-arm64.apk","state":"uploaded","size":100,
+                "digest":"sha256:${"a".repeat(64)}",
                 "browser_download_url":"${next.assets.single().url}"}]}]""",
                     )
                 },
@@ -155,7 +163,7 @@ class AppReleaseRemoteDataSourceTest {
         try {
             assertEquals(
                 next.assets.single().url,
-                AppReleaseRemoteDataSource(client, dispatchers).findUpdate("2.8.4-media-part5 (29322814) fdroid"),
+                AppReleaseRemoteDataSource(client, dispatchers).findUpdate("2.8.4-media-part5 (29322814) fdroid")?.url,
             )
         } finally {
             client.close()
@@ -171,6 +179,24 @@ class AppReleaseRemoteDataSourceTest {
             }
         } finally {
             client.close()
+        }
+
+        @Test
+        fun selectedReleaseCarriesVersionedNameSizeAndIntegrity() {
+            val selected = requireNotNull(selectAppUpdate("6.2", listOf(release("6.3"))))
+            assertEquals("Meshtastic-media-part6.3-arm64.apk", selected.fileName)
+            assertEquals(100L, selected.size)
+            assertEquals("a".repeat(64), selected.sha256)
+            assertEquals(true, selected.isInstalled("2.8.4-media-part6.3 (29322824) fdroid"))
+            assertEquals(false, selected.isInstalled("2.8.4-media-part6.2"))
+        }
+
+        @Test
+        fun missingIntegrityIsAnError() {
+            val next = release("6.3")
+            assertFailsWith<IllegalStateException> {
+                selectAppUpdate("6.2", listOf(next.copy(assets = next.assets.map { it.copy(digest = null) })))
+            }
         }
     }
 }

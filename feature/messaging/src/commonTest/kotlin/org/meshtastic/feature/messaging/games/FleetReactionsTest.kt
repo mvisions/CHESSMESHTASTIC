@@ -16,21 +16,56 @@
  */
 package org.meshtastic.feature.messaging.games
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class FleetReactionsTest {
+    @Test
+    fun allFourSquareReactionsFitOnANarrowPhoneWithLargeText() = runComposeUiTest {
+        val session =
+            FleetGameSession(
+                gameId = "compact-game",
+                contactKey = "!12345678",
+                opponentNodeId = "!12345678",
+                opponentName = "Opponent",
+                board = FleetBoard(listOf(FleetShip(2, setOf(0, 1)))),
+                phase = FleetGamePhase.PLAYING,
+                localTurn = true,
+            )
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(LocalDensity provides Density(1f, 1.3f)) {
+                    Box(Modifier.size(320.dp, 80.dp)) { FleetReactions(session, {}) }
+                }
+            }
+        }
+        for (description in listOf("Nice hit!", "Bravo!", "GG", "Nice move!")) {
+            val button = onNodeWithContentDescription(description).assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+            val bounds = button.fetchSemanticsNode().boundsInRoot
+            assertEquals(bounds.width, bounds.height, absoluteTolerance = 1f)
+        }
+    }
+
     @Test
     fun reactionAppearsInGameAndLocksEveryReactionButton() = runComposeUiTest {
         var session by
@@ -61,7 +96,7 @@ class FleetReactionsTest {
         onNodeWithText("Bravo!").performClick()
         onNodeWithText("You: Bravo!").assertIsDisplayed()
         onNodeWithText("GG").assertIsNotEnabled()
-        onNodeWithText("Nice hit!").assertIsNotEnabled()
+        onNodeWithContentDescription("Nice hit!").assertIsNotEnabled()
         runOnIdle {
             assertEquals(1, messages)
             session =

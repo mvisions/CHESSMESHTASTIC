@@ -54,30 +54,43 @@ internal data class AppReleaseAsset(
     @SerialName("browser_download_url") val url: String,
     val state: String,
     val size: Long,
+    val digest: String? = null,
 )
 
-@Single
-class AppReleaseRemoteDataSource(private val client: HttpClient, private val dispatchers: CoroutineDispatchers) {
-    suspend fun findUpdate(installedVersion: String, arm64: Boolean = true): String? = withContext(dispatchers.io) {
+@Serializable
+data class AppUpdateRelease(val version: String, val url: String, val size: Long, val sha256: String) {
+    val fileName: String
+        get() = "Meshtastic-media-part$version-${if (url.endsWith("-arm64.apk")) "arm64" else "universal"}.apk"
+
+    fun isInstalled(installedVersion: String): Boolean {
         val installed = Regex("""media-part(\d+(?:\.\d+)*)""").find(installedVersion)?.groupValues?.get(1)
-        requireNotNull(installed) { "Installed version does not identify a media project release" }
-        val releases = mutableListOf<AppRelease>()
-        var page = 1
-        do {
-            val response =
-                client.get(RELEASES_API) {
-                    parameter("per_page", PAGE_SIZE)
-                    parameter("page", page++)
-                }
-            check(response.status.isSuccess()) { "Release check failed: HTTP ${response.status.value}" }
-            val batch = releaseJson.decodeFromString<List<AppRelease>>(response.bodyAsText())
-            releases.addAll(batch)
-        } while (batch.size == PAGE_SIZE)
-        selectAppUpdate(installed, releases, arm64)
+        return installed != null && compareAppVersions(installed, version) >= 0
     }
 }
 
-internal fun selectAppUpdate(installed: String, releases: List<AppRelease>, arm64: Boolean = true): String? {
+@Single
+class AppReleaseRemoteDataSource(private val client: HttpClient, private val dispatchers: CoroutineDispatchers) {
+    suspend fun findUpdate(installedVersion: String, arm64: Boolean = true): AppUpdateRelease? =
+        withContext(dispatchers.io) {
+            val installed = Regex("""media-part(\d+(?:\.\d+)*)""").find(installedVersion)?.groupValues?.get(1)
+            requireNotNull(installed) { "Installed version does not identify a media project release" }
+            val releases = mutableListOf<AppRelease>()
+            var page = 1
+            do {
+                val response =
+                    client.get(RELEASES_API) {
+                        parameter("per_page", PAGE_SIZE)
+                        parameter("page", page++)
+                    }
+                check(response.status.isSuccess()) { "Release check failed: HTTP ${response.status.value}" }
+                val batch = releaseJson.decodeFromString<List<AppRelease>>(response.bodyAsText())
+                releases.addAll(batch)
+            } while (batch.size == PAGE_SIZE)
+            selectAppUpdate(installed, releases, arm64)
+        }
+}
+
+internal fun selectAppUpdate(installed: String, releases: List<AppRelease>, arm64: Boolean = true): AppUpdateRelease? {
     val apkName = if (arm64) ARM64_APK else UNIVERSAL_APK
     val candidates =
         releases
@@ -92,11 +105,14 @@ internal fun selectAppUpdate(installed: String, releases: List<AppRelease>, arm6
                             it.size > 0 &&
                             DOWNLOAD_PREFIXES.any { prefix -> it.url == "$prefix${release.tag}/$apkName" }
                     }
-                if (version != null && asset != null) version to asset.url else null
+                if (version != null && asset != null) version to asset else null
             }
     val latest = candidates.maxWithOrNull { a, b -> compareAppVersions(a.first, b.first) }
     checkNotNull(latest) { "No downloadable project release found" }
-    return latest.second.takeIf { compareAppVersions(latest.first, installed) > 0 }
+    if (compareAppVersions(latest.first, installed) <= 0) return null
+    val digest = latest.second.digest?.removePrefix("sha256:")
+    check(digest != null && digest.matches(Regex("[a-fA-F0-9]{64}"))) { "Release SHA-256 is missing or invalid" }
+    return AppUpdateRelease(latest.first, latest.second.url, latest.second.size, digest.lowercase())
 }
 
 internal fun compareAppVersions(left: String, right: String): Int {

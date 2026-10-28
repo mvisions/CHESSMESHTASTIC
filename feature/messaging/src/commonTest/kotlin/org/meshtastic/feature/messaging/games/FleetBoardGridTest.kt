@@ -18,21 +18,28 @@ package org.meshtastic.feature.messaging.games
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -135,7 +142,7 @@ class FleetBoardGridTest {
     }
 
     @Test
-    fun narrowPhoneStacksBoardsEvenWhenControlsLeaveAWideContentArea() = runComposeUiTest {
+    fun narrowPhoneShowsOnlyOneLargeOwnFleetAndAimControl() = runComposeUiTest {
         val session =
             FleetGameSession(
                 gameId = "portrait-game",
@@ -149,28 +156,25 @@ class FleetBoardGridTest {
         setContent {
             MaterialTheme {
                 Box(Modifier.size(393.dp, 380.dp)) {
-                    FleetBoards(session, onCellClick = {}, modifier = Modifier.fillMaxSize())
+                    FleetGameContent(session, onCellClick = {}, modifier = Modifier.fillMaxSize())
                 }
             }
         }
 
-        val opponent =
-            onNodeWithContentDescription("Cell A1: not fired at").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        onNodeWithContentDescription("Cell A1: not fired at").assertDoesNotExist()
         val own = onNodeWithContentDescription("Cell A1: ship").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        assertTrue(own.top > opponent.bottom, "Own fleet must be below the opponent on a narrow phone")
-        assertEquals(opponent.left, own.left, "Both grids must share the same horizontal position")
-        onNodeWithContentDescription("Cell A1: not fired at").assertWidthIsAtLeast(28.dp).assertHeightIsAtLeast(15.dp)
-        onNodeWithContentDescription("Cell A1: ship").assertWidthIsAtLeast(28.dp).assertHeightIsAtLeast(15.dp)
-        val fire = onNodeWithText("Fire").fetchSemanticsNode().boundsInRoot
-        val title = onNodeWithText("Opponent's fleet").fetchSemanticsNode().boundsInRoot
-        assertTrue(title.right <= opponent.left, "The title belongs beside the board, not above it")
-        assertTrue(fire.right <= opponent.left, "The fire control belongs beside the board, not above it")
-        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed()
+        onNodeWithContentDescription("Cell A1: ship").assertHasNoClickAction()
+        assertEquals(own.width, own.height, absoluteTolerance = 1f)
+        onNodeWithContentDescription("Cell A1: ship").assertWidthIsAtLeast(18.dp)
+        val fire = onNodeWithText("Aim").fetchSemanticsNode().boundsInRoot
+        val title = onNodeWithText("Your fleet").fetchSemanticsNode().boundsInRoot
+        assertTrue(title.right <= fire.left, "The title and Aim control must fit on one row")
+        assertTrue(fire.bottom <= own.top, "The controls must not overlap the grid")
         onNodeWithContentDescription("Cell J10: water").assertIsDisplayed()
     }
 
     @Test
-    fun bothCompleteBoardsFitOnOnePhoneScreenAndShotsRequireConfirmation() = runComposeUiTest {
+    fun separateTargetingViewUsesFullWidthAndShotsRequireConfirmation() = runComposeUiTest {
         val session =
             FleetGameSession(
                 gameId = "test-game",
@@ -186,20 +190,123 @@ class FleetBoardGridTest {
         setContent {
             MaterialTheme {
                 Box(Modifier.size(360.dp, 640.dp)) {
-                    FleetBoards(session, onCellClick = { target = it }, modifier = Modifier.fillMaxSize())
+                    FleetGameContent(session, onCellClick = { target = it }, modifier = Modifier.fillMaxSize())
                 }
             }
         }
 
         onNodeWithContentDescription("Cell A1: hit").assertIsDisplayed()
         onNodeWithContentDescription("Cell B1: ship").assertIsDisplayed()
-        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed()
+        onNodeWithContentDescription("Cell J10: not fired at").assertDoesNotExist()
         onNodeWithContentDescription("Cell J10: water").assertIsDisplayed()
-        onNodeWithContentDescription("Cell A1: not fired at").assertWidthIsAtLeast(25.dp).assertHeightIsAtLeast(20.dp)
         onNodeWithContentDescription("Cell A1: hit").assertHeightIsAtLeast(20.dp)
+        onNodeWithText("Aim").performClick()
+        onNodeWithContentDescription("Cell A1: ship").assertDoesNotExist()
+        onNodeWithContentDescription("Nice hit!").assertDoesNotExist()
+        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed()
+        onNodeWithContentDescription("Cell A1: not fired at").assertWidthIsAtLeast(32.dp)
         onNodeWithContentDescription("Cell A1: not fired at").performClick()
+        runOnIdle { assertEquals(null, target) }
+        onNodeWithContentDescription("Cell A1: not fired at")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
         runOnIdle { assertEquals(null, target) }
         onNodeWithText("Fire at A1").assertIsDisplayed().performClick()
         runOnIdle { assertEquals(0, target) }
+    }
+
+    @Test
+    fun narrowPhoneWithLargeTextAndLongOpponentNamePreservesBoardSpace() = runComposeUiTest {
+        val session =
+            FleetGameSession(
+                gameId = "narrow-game",
+                contactKey = "!12345678",
+                opponentNodeId = "!12345678",
+                opponentName = "Very long opponent name with multiple words and symbols",
+                board = board,
+                phase = FleetGamePhase.PLAYING,
+                localTurn = true,
+            )
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(LocalDensity provides Density(1f, 1.3f)) {
+                    FleetGameContent(session, {}, Modifier.size(320.dp, 600.dp).padding(8.dp)) {
+                        TextButton(onClick = {}) { Text("Resign") }
+                    }
+                }
+            }
+        }
+        onNodeWithText(session.opponentName).assertIsDisplayed()
+        onNodeWithText("Aim").assertIsDisplayed()
+        onNodeWithContentDescription("Cell A1: not fired at").assertDoesNotExist()
+        val own =
+            onNodeWithContentDescription("Cell A1: ship").assertWidthIsAtLeast(24.dp).fetchSemanticsNode().boundsInRoot
+        assertEquals(own.width, own.height, absoluteTolerance = 1f)
+        onNodeWithContentDescription("Nice hit!").assertIsDisplayed()
+        onNodeWithContentDescription("Nice move!").assertIsDisplayed()
+        onNodeWithContentDescription("Bravo!").assertIsDisplayed()
+        onNodeWithContentDescription("GG").assertIsDisplayed()
+        onNodeWithText("Resign").assertIsDisplayed()
+        onNodeWithContentDescription("Cell J10: water").assertIsDisplayed()
+        onNodeWithText("Aim").performClick()
+        onNodeWithText(session.opponentName).assertDoesNotExist()
+        onNodeWithContentDescription("Nice hit!").assertDoesNotExist()
+        onNodeWithText("Resign").assertDoesNotExist()
+        onNodeWithContentDescription("Cell A1: not fired at").assertWidthIsAtLeast(28.dp)
+        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed().performClick()
+        onNodeWithContentDescription("Cell H8: not fired at").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed()
+        onNodeWithText("Full board").performClick()
+        onNodeWithContentDescription("Cell A1: not fired at").assertIsDisplayed()
+        onNodeWithContentDescription("Cell J10: not fired at").assertIsDisplayed()
+        onNodeWithText("Close").performClick()
+        onNodeWithContentDescription("Cell J10: water").assertIsDisplayed()
+        onNodeWithContentDescription("Cell A1: ship").assertWidthIsAtLeast(24.dp)
+        onNodeWithContentDescription("Nice hit!").assertIsDisplayed()
+        onNodeWithText("Resign").assertIsDisplayed()
+    }
+
+    @Test
+    fun waitingPlayerCanInspectTargetAreasWithoutSelectingOrFiring() = runComposeUiTest {
+        val session =
+            FleetGameSession(
+                gameId = "waiting-game",
+                contactKey = "!12345678",
+                opponentNodeId = "!12345678",
+                opponentName = "Opponent",
+                board = board,
+                phase = FleetGamePhase.PLAYING,
+                localTurn = false,
+            )
+        var target: Int? = null
+        setContent {
+            MaterialTheme {
+                FleetGameContent(session, { target = it }, Modifier.size(320.dp, 600.dp))
+            }
+        }
+        onNodeWithText("Aim").performClick()
+        onNodeWithContentDescription("Cell J10: not fired at").performClick()
+        onNodeWithContentDescription("Cell H8: not fired at").assertWidthIsAtLeast(48.dp).assertHasNoClickAction()
+        onNodeWithContentDescription("Cell J10: not fired at").assertHasNoClickAction()
+        onNodeWithText("Fire").assertIsNotEnabled()
+        runOnIdle { assertEquals(null, target) }
+        onNodeWithText("Close").performClick()
+        onNodeWithContentDescription("Cell J10: water").assertIsDisplayed()
+    }
+
+    @Test
+    fun enlargedRegionsStayInsideTheBoardAtEveryEdge() {
+        assertEquals(FleetTargetRegion(0..2, 0..2), fleetTargetRegion(0))
+        assertEquals(FleetTargetRegion(0..2, 7..9), fleetTargetRegion(9))
+        assertEquals(FleetTargetRegion(7..9, 0..2), fleetTargetRegion(90))
+        assertEquals(FleetTargetRegion(7..9, 7..9), fleetTargetRegion(99))
+        for (cell in 0 until 100) {
+            val region = fleetTargetRegion(cell)
+            assertTrue(cell / 10 in region.rows)
+            assertTrue(cell % 10 in region.columns)
+            assertEquals(3, region.rows.count())
+            assertEquals(3, region.columns.count())
+        }
     }
 }

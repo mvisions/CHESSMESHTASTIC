@@ -16,14 +16,16 @@
  */
 package org.meshtastic.feature.messaging.games
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +33,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
@@ -40,7 +47,9 @@ import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.fleet_reaction_bravo
 import org.meshtastic.core.resources.fleet_reaction_gg
 import org.meshtastic.core.resources.fleet_reaction_hit
+import org.meshtastic.core.resources.fleet_reaction_hit_short
 import org.meshtastic.core.resources.fleet_reaction_nice_move
+import org.meshtastic.core.resources.fleet_reaction_nice_move_short
 import org.meshtastic.core.resources.fleet_reaction_opponent
 import org.meshtastic.core.resources.fleet_reaction_wait
 import org.meshtastic.core.resources.fleet_reaction_you
@@ -85,19 +94,34 @@ internal fun FleetReactions(
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = 360.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             FleetReaction.entries.forEach { reaction ->
-                SuggestionChip(
+                val description = stringResource(reaction.label())
+                OutlinedButton(
                     onClick = { if (session.canSendReaction) onReaction(reaction) },
                     enabled = secondsLeft == 0 && session.canSendReaction,
-                    label = { Text(stringResource(reaction.label())) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    shape = MaterialTheme.shapes.small,
+                    modifier =
+                    Modifier.weight(1f).heightIn(min = 48.dp).aspectRatio(1f).semantics {
+                        contentDescription = description
+                    },
+                ) {
+                    Text(
+                        stringResource(reaction.buttonLabel()),
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         if (secondsLeft > 0) {
@@ -114,4 +138,10 @@ private fun FleetReaction.label(): StringResource = when (this) {
     FleetReaction.BRAVO -> Res.string.fleet_reaction_bravo
     FleetReaction.GG -> Res.string.fleet_reaction_gg
     FleetReaction.NICE_MOVE -> Res.string.fleet_reaction_nice_move
+}
+
+private fun FleetReaction.buttonLabel(): StringResource = when (this) {
+    FleetReaction.HIT -> Res.string.fleet_reaction_hit_short
+    FleetReaction.NICE_MOVE -> Res.string.fleet_reaction_nice_move_short
+    else -> label()
 }

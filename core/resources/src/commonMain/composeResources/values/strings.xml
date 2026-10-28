@@ -127,8 +127,17 @@
     <string name="app_update_check">Check for app updates</string>
     <string name="app_update_checking">Checking for updates…</string>
     <string name="app_update_current">You are on the latest version</string>
-    <string name="app_update_error">Unable to check or open the update. Check your internet connection and try again.</string>
+    <string name="app_update_download">Download app update</string>
+    <string name="app_update_downloading">Downloading update: %1$d%</string>
+    <string name="app_update_error">The update operation failed. Check your connection, storage and install permissions, then try again.</string>
+    <string name="app_update_install">Install downloaded update</string>
+    <string name="app_update_installed">Update installed and version confirmed.</string>
+    <string name="app_update_not_installed">Installation not confirmed. Your installed version has not changed. Tap Install to try again.</string>
     <string name="app_update_opening">Opening the new APK download in your browser</string>
+    <string name="app_update_permission">Allow updates from this app in Android settings, then return and tap Install.</string>
+    <string name="app_update_ready">Download verified. Tap Install and confirm in Android.</string>
+    <string name="app_update_target">Version %1$s is available. Downloading does not install it.</string>
+    <string name="app_update_verifying">Verifying the downloaded APK…</string>
     <string name="app_version">Version</string>
     <string name="apply">Apply</string>
     <string name="apps">Apps</string>
@@ -890,6 +899,7 @@
     <string name="fixed_position">Fixed Position</string>
     <!-- FLEET -->
     <string name="fleet_accept">Accept</string>
+    <string name="fleet_aim">Aim</string>
     <string name="fleet_board_cell">Cell %1$s: %2$s</string>
     <string name="fleet_cell_hit">hit</string>
     <string name="fleet_cell_miss">miss</string>
@@ -911,7 +921,9 @@
     <string name="fleet_reaction_bravo">Bravo!</string>
     <string name="fleet_reaction_gg">GG</string>
     <string name="fleet_reaction_hit">Nice hit!</string>
+    <string name="fleet_reaction_hit_short">Nice!</string>
     <string name="fleet_reaction_nice_move">Nice move!</string>
+    <string name="fleet_reaction_nice_move_short">Well done!</string>
     <string name="fleet_reaction_opponent">%1$s: %2$s</string>
     <string name="fleet_reaction_wait">Radio recharging: %1$d s</string>
     <string name="fleet_reaction_you">You: %1$s</string>
@@ -924,6 +936,9 @@
     <string name="fleet_result_resigned">You resigned from the game.</string>
     <string name="fleet_result_sunk">Ship sunk (length %1$d)! Choose your next shot.</string>
     <string name="fleet_result_won">You won! The opponent's fleet has been sunk.</string>
+    <string name="fleet_target_choose_area">Tap an area to enlarge it. This does not select or fire a shot.</string>
+    <string name="fleet_target_choose_cell">Choose a square in this enlarged area, then confirm Fire.</string>
+    <string name="fleet_target_overview">Full board</string>
     <string name="fleet_turn_waiting">Waiting for %1$s to fire...</string>
     <string name="fleet_turn_yours">Your turn: choose a coordinate to fire at.</string>
     <string name="for_more_information_see_our_privacy_policy">For more information, see our privacy policy.</string>
