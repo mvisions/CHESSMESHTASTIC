@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import org.koin.compose.koinInject
 import org.meshtastic.core.common.BuildConfigProvider
 import org.meshtastic.core.network.AppReleaseRemoteDataSource
+import org.meshtastic.core.ui.util.AlertManager
 
 @Composable
 fun AppUpdateSetting(modifier: Modifier = Modifier) {
@@ -32,6 +33,7 @@ fun AppUpdateSetting(modifier: Modifier = Modifier) {
         modifier = modifier,
         installedVersion = build.versionName,
         installer = installer,
+        alertManager = koinInject<AlertManager>(),
         findUpdate = { installed -> source.findUpdate(installed, arm64 = "arm64-v8a" in Build.SUPPORTED_ABIS) },
     )
 }

@@ -18,6 +18,7 @@ package org.meshtastic.app
 
 import android.app.Application
 import android.app.DownloadManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -59,6 +60,10 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
 
     override suspend fun pendingRelease(): AppUpdateRelease? = withContext(dispatchers.io) {
         preferences.getString(RELEASE, null)?.let { Json.decodeFromString<AppUpdateRelease>(it) }
+    }
+
+    override suspend fun canInstall(): Boolean = withContext(dispatchers.io) {
+        application.packageManager.canRequestPackageInstalls()
     }
 
     override suspend fun download(release: AppUpdateRelease) = withContext(dispatchers.io) {
@@ -144,11 +149,7 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
                         "${application.packageName}.media-capture",
                         downloadFile(release),
                     )
-                application.startActivity(
-                    Intent(Intent.ACTION_VIEW)
-                        .setDataAndType(uri, APK_MIME)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                )
+                application.startActivity(systemApkInstallerIntent(application.packageManager, uri))
                 AppUpdateInstallResult.OPENED
             }
         }
@@ -225,6 +226,23 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
         const val APK_MIME = "application/vnd.android.package-archive"
         const val VERIFY_BUFFER_SIZE = 1024 * 1024
     }
+}
+
+internal fun systemApkInstallerIntent(packageManager: PackageManager, uri: Uri): Intent {
+    val intent =
+        Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, "application/vnd.android.package-archive")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val handler =
+        packageManager
+            .queryIntentActivities(
+                intent,
+                PackageManager.MATCH_SYSTEM_ONLY or PackageManager.MATCH_DEFAULT_ONLY,
+            )
+            .firstOrNull()
+            ?.activityInfo
+    checkNotNull(handler) { "Android system APK installer is unavailable" }
+    return intent.setComponent(ComponentName(handler.packageName, handler.name))
 }
 
 internal data class VerifiedApkDownload(

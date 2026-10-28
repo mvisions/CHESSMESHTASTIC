@@ -18,8 +18,13 @@ package org.meshtastic.app
 
 import android.app.Application
 import android.app.DownloadManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -39,6 +44,40 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = Application::class)
 class AndroidAppUpdateInstallerTest {
+    @Test
+    fun apkIntentSelectsOnlyTheSystemInstallerAndGrantsReadAccess() {
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val uri = Uri.parse("content://test.provider/update.apk")
+        val manager = application.packageManager
+        val component = ComponentName("test.system.installer", "test.system.installer.InstallActivity")
+        val activity = shadowOf(manager).addActivityIfNotPresent(component)
+        activity.exported = true
+        activity.applicationInfo.flags = activity.applicationInfo.flags or ApplicationInfo.FLAG_SYSTEM
+        shadowOf(manager)
+            .addIntentFilterForActivity(
+                component,
+                IntentFilter(Intent.ACTION_VIEW).apply {
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                    addDataScheme("content")
+                    addDataType("application/vnd.android.package-archive")
+                },
+            )
+        val intent = systemApkInstallerIntent(manager, uri)
+        assertEquals("test.system.installer", intent.component?.packageName)
+        assertEquals(uri, intent.data)
+        assertEquals("application/vnd.android.package-archive", intent.type)
+        assertTrue(intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+    }
+
+    @Test
+    fun missingSystemInstallerFailsExplicitly() {
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        assertFailsWith<IllegalStateException> {
+            systemApkInstallerIntent(application.packageManager, Uri.parse("content://missing.provider/update.apk"))
+        }
+    }
+
     @Test
     fun verificationCacheRequiresSameDownloadReleaseAndUnchangedFile() {
         val file = File.createTempFile("update", ".apk")

@@ -16,6 +16,12 @@
  */
 package org.meshtastic.feature.settings.component
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,8 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,31 +45,39 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.meshtastic.core.network.AppUpdateRelease
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.app_installed_version
+import org.meshtastic.core.resources.app_update_action
 import org.meshtastic.core.resources.app_update_check
 import org.meshtastic.core.resources.app_update_checking
+import org.meshtastic.core.resources.app_update_confirm
 import org.meshtastic.core.resources.app_update_current
-import org.meshtastic.core.resources.app_update_download
 import org.meshtastic.core.resources.app_update_downloading
 import org.meshtastic.core.resources.app_update_error
 import org.meshtastic.core.resources.app_update_install
 import org.meshtastic.core.resources.app_update_installed
+import org.meshtastic.core.resources.app_update_installing
 import org.meshtastic.core.resources.app_update_not_installed
 import org.meshtastic.core.resources.app_update_permission
 import org.meshtastic.core.resources.app_update_ready
 import org.meshtastic.core.resources.app_update_target
 import org.meshtastic.core.resources.app_update_verifying
+import org.meshtastic.core.resources.cancel
 import org.meshtastic.core.ui.component.ListItem
 import org.meshtastic.core.ui.theme.StatusColors.StatusGreen
+import org.meshtastic.core.ui.util.AlertManager
 import kotlin.time.Duration.Companion.seconds
+import org.jetbrains.compose.resources.getString as getStringSuspend
 
 internal class AppUpdateState(
     private val installer: AppUpdateInstaller,
     initialVersion: String,
+    private var automaticRelease: AppUpdateRelease? = null,
+    private var awaitingPermission: Boolean = false,
     private val findUpdate: suspend (String) -> AppUpdateRelease?,
 ) {
     var installedVersion by mutableStateOf(initialVersion)
@@ -84,6 +99,13 @@ internal class AppUpdateState(
         private set
 
     private var pausedForInstall = false
+    private var foreground = true
+    private var resumePending = false
+
+    fun saveAutomaticUpdate(): List<String> = listOf(
+        Json.encodeToString(automaticRelease),
+        awaitingPermission.toString(),
+    )
 
     suspend fun check() = guarded {
         installedVersion = installer.installedVersion()
@@ -91,6 +113,7 @@ internal class AppUpdateState(
         if (pending != null) {
             release = pending
             refreshProgress(pending)
+            continueInstallation()
             if (progress is AppUpdateProgress.Downloading || progress == AppUpdateProgress.Ready) return@guarded
             if (progress == AppUpdateProgress.Installed) release = null
         }
@@ -106,57 +129,101 @@ internal class AppUpdateState(
         }
     }
 
-    suspend fun download() = guarded {
-        val target = checkNotNull(release) { "No update selected" }
-        installer.download(target)
-        progress = AppUpdateProgress.Downloading(0, target.size)
-        status = Res.string.app_update_downloading
+    suspend fun update(target: AppUpdateRelease) = guarded {
+        check(release == target) { "Selected update has changed; confirm the new version" }
+        check(progress == AppUpdateProgress.Missing || progress == AppUpdateProgress.Ready) {
+            "Update is already in progress"
+        }
+        automaticRelease = target
+        awaitingPermission = false
+        if (progress == AppUpdateProgress.Ready) {
+            continueInstallation()
+        } else {
+            installer.download(target)
+            progress = AppUpdateProgress.Downloading(0, target.size)
+            status = Res.string.app_update_downloading
+        }
     }
 
-    suspend fun refresh() = guarded {
+    suspend fun refresh(resumed: Boolean = false) = guarded {
         installedVersion = installer.installedVersion()
         release?.let { target ->
             if (installer.pendingRelease() == target || target.isInstalled(installedVersion)) {
                 refreshProgress(target)
             }
         }
-        if (installing && pausedForInstall) {
+        if (resumed && installing && pausedForInstall) {
             installing = false
             pausedForInstall = false
             if (progress != AppUpdateProgress.Installed) status = Res.string.app_update_not_installed
         }
+        if (awaitingPermission && resumed) {
+            awaitingPermission = false
+            if (!installer.canInstall()) {
+                automaticRelease = null
+                status = Res.string.app_update_permission
+            }
+        }
+        continueInstallation()
     }
 
-    suspend fun install() = guarded {
-        val target = checkNotNull(release) { "No update selected" }
-        check(progress == AppUpdateProgress.Ready) { "Update is not verified" }
+    private suspend fun continueInstallation() {
+        if (progress == AppUpdateProgress.Installed) {
+            automaticRelease = null
+            awaitingPermission = false
+        }
+        val target = automaticRelease
+        if (target == null || release != target) return
+        if (!foreground || installing || awaitingPermission || progress != AppUpdateProgress.Ready) {
+            return
+        }
         when (installer.install(target)) {
             AppUpdateInstallResult.OPENED -> {
+                automaticRelease = null
                 installing = true
-                status = Res.string.app_update_not_installed
+                status = Res.string.app_update_installing
             }
 
-            AppUpdateInstallResult.PERMISSION_REQUIRED -> status = Res.string.app_update_permission
+            AppUpdateInstallResult.PERMISSION_REQUIRED -> {
+                awaitingPermission = true
+                status = Res.string.app_update_permission
+            }
         }
     }
 
+    suspend fun onResume() {
+        foreground = true
+        if (busy) {
+            resumePending = true
+            return
+        }
+        refresh(resumed = true)
+    }
+
     fun onPause() {
+        foreground = false
         if (installing) pausedForInstall = true
     }
 
     private suspend fun refreshProgress(target: AppUpdateRelease) {
-        val previous = progress
-        if (previous is AppUpdateProgress.Downloading) {
-            progress = AppUpdateProgress.Verifying
-            status = Res.string.app_update_verifying
-        }
         progress = installer.progress(target)
         status =
             when (progress) {
                 is AppUpdateProgress.Downloading -> Res.string.app_update_downloading
+
                 AppUpdateProgress.Missing -> Res.string.app_update_target
+
                 AppUpdateProgress.Verifying -> Res.string.app_update_verifying
-                AppUpdateProgress.Ready -> Res.string.app_update_ready
+
+                AppUpdateProgress.Ready ->
+                    when (status) {
+                        Res.string.app_update_permission,
+                        Res.string.app_update_not_installed,
+                        -> status
+
+                        else -> Res.string.app_update_ready
+                    }
+
                 AppUpdateProgress.Installed -> Res.string.app_update_installed
             }
     }
@@ -172,10 +239,16 @@ internal class AppUpdateState(
         } catch (error: Exception) {
             Logger.w(error) { "Application update operation failed" }
             status = Res.string.app_update_error
+            automaticRelease = null
+            awaitingPermission = false
             installing = false
             progress = AppUpdateProgress.Missing
         } finally {
             busy = false
+        }
+        if (resumePending && foreground) {
+            resumePending = false
+            onResume()
         }
     }
 }
@@ -185,13 +258,33 @@ internal fun AppUpdateContent(
     installedVersion: String,
     installer: AppUpdateInstaller,
     findUpdate: suspend (String) -> AppUpdateRelease?,
+    alertManager: AlertManager,
     modifier: Modifier = Modifier,
 ) {
-    val state = remember(installer, installedVersion) { AppUpdateState(installer, installedVersion, findUpdate) }
+    val state =
+        rememberSaveable(
+            installer,
+            installedVersion,
+            saver =
+            listSaver(
+                save = { it.saveAutomaticUpdate() },
+                restore = {
+                    AppUpdateState(
+                        installer,
+                        installedVersion,
+                        Json.decodeFromString<AppUpdateRelease?>(it[0]),
+                        it[1].toBooleanStrict(),
+                        findUpdate,
+                    )
+                },
+            ),
+        ) {
+            AppUpdateState(installer, installedVersion, findUpdate = findUpdate)
+        }
     val scope = rememberCoroutineScope()
     LaunchedEffect(state) { state.check() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { state.onPause() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { scope.launch { state.refresh() } }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { scope.launch { state.onResume() } }
     val downloading = state.progress as? AppUpdateProgress.Downloading
     val polling = downloading != null || state.progress == AppUpdateProgress.Verifying
     LaunchedEffect(state, polling) {
@@ -201,21 +294,25 @@ internal fun AppUpdateContent(
         }
     }
     val actionable = state.release != null && state.progress != AppUpdateProgress.Installed
+    val highlight = updateHighlight(actionable && !state.busy && !state.installing && !polling)
     Column(
         modifier.background(
-            if (actionable) MaterialTheme.colorScheme.StatusGreen.copy(alpha = 0.18f) else Color.Transparent,
+            if (actionable) MaterialTheme.colorScheme.StatusGreen.copy(alpha = highlight) else Color.Transparent,
             MaterialTheme.shapes.medium,
         ),
     ) {
         ListItem(
             text = stringResource(if (!actionable) Res.string.app_update_check else updateAction(state.progress)),
             supportingText = updateDescription(state),
-            enabled = !state.busy && !state.installing && downloading == null,
+            enabled = !state.busy && !state.installing && !polling,
             onClick = {
                 scope.launch {
                     when {
-                        state.progress == AppUpdateProgress.Ready -> state.install()
-                        actionable -> state.download()
+                        actionable -> {
+                            val target = checkNotNull(state.release)
+                            alertManager.confirmUpdate(target) { scope.launch { state.update(target) } }
+                        }
+
                         else -> state.check()
                     }
                 }
@@ -223,10 +320,7 @@ internal fun AppUpdateContent(
         )
         when {
             downloading != null -> {
-                LinearProgressIndicator(
-                    progress = { downloading.fraction },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                )
+                AppUpdateDownloadProgress(downloading.fraction)
             }
 
             state.progress == AppUpdateProgress.Verifying -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -234,9 +328,47 @@ internal fun AppUpdateContent(
     }
 }
 
+@Composable
+private fun updateHighlight(pulsing: Boolean): Float {
+    if (!pulsing) return 0.18f
+    val transition = rememberInfiniteTransition(label = "Available app update")
+    val alpha by
+        transition.animateFloat(
+            initialValue = 0.12f,
+            targetValue = 0.28f,
+            animationSpec = infiniteRepeatable(tween(UPDATE_PULSE_MILLIS), RepeatMode.Reverse),
+            label = "Update highlight",
+        )
+    return alpha
+}
+
+@Composable
+private fun AppUpdateDownloadProgress(fraction: Float) {
+    val progress by
+        animateFloatAsState(
+            fraction,
+            animationSpec = tween(DOWNLOAD_PROGRESS_MILLIS),
+            label = "APK download progress",
+        )
+    LinearProgressIndicator(
+        progress = { progress },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    )
+}
+
+private suspend fun AlertManager.confirmUpdate(target: AppUpdateRelease, onConfirm: () -> Unit) {
+    showAlert(
+        titleRes = Res.string.app_update_action,
+        message = getStringSuspend(Res.string.app_update_confirm, target.version),
+        confirmTextRes = Res.string.app_update_action,
+        dismissTextRes = Res.string.cancel,
+        onConfirm = onConfirm,
+    )
+}
+
 private fun updateAction(progress: AppUpdateProgress): StringResource = when (progress) {
     AppUpdateProgress.Ready -> Res.string.app_update_install
-    AppUpdateProgress.Missing -> Res.string.app_update_download
+    AppUpdateProgress.Missing -> Res.string.app_update_action
     else -> Res.string.app_update_check
 }
 
@@ -260,3 +392,5 @@ private fun updateDescription(state: AppUpdateState): String {
 }
 
 private const val PERCENT_SCALE = 100
+private const val UPDATE_PULSE_MILLIS = 1_200
+private const val DOWNLOAD_PROGRESS_MILLIS = 700

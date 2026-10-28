@@ -17,7 +17,11 @@
 package org.meshtastic.feature.settings.component
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -30,8 +34,10 @@ import org.meshtastic.core.network.AppUpdateRelease
 import org.meshtastic.core.resources.Res
 import org.meshtastic.core.resources.app_update_error
 import org.meshtastic.core.resources.app_update_installed
+import org.meshtastic.core.resources.app_update_installing
 import org.meshtastic.core.resources.app_update_not_installed
 import org.meshtastic.core.resources.app_update_permission
+import org.meshtastic.core.ui.util.AlertManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -49,14 +55,14 @@ class AppUpdateContentTest {
         )
 
     @Test
-    fun downloadAndInstallAreSeparateAndRepeatedTapsDoNotDuplicateEither() = runTest {
+    fun confirmedUpdateAutomaticallyInstallsOnceAndCancellationDoesNotRetry() = runTest {
         val fake = FakeInstaller()
         val state = AppUpdateState(fake, fake.version) { release }
         state.check()
         val gate = CompletableDeferred<Unit>()
         fake.downloadGate = gate
-        val job = launch(UnconfinedTestDispatcher(testScheduler)) { state.download() }
-        repeat(5) { state.download() }
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { state.update(release) }
+        repeat(5) { state.update(release) }
         assertEquals(1, fake.downloads)
         assertEquals(0, fake.installs)
         gate.complete(Unit)
@@ -64,14 +70,15 @@ class AppUpdateContentTest {
         assertTrue(state.progress is AppUpdateProgress.Downloading)
         fake.result = AppUpdateProgress.Ready
         state.refresh()
-        state.install()
-        repeat(5) { state.install() }
+        repeat(5) { state.refresh() }
         assertEquals(1, fake.installs)
-        assertEquals(Res.string.app_update_not_installed, state.status)
+        assertEquals(Res.string.app_update_installing, state.status)
         state.onPause()
-        state.refresh()
+        state.onResume()
         assertFalse(state.installing)
         assertEquals(Res.string.app_update_not_installed, state.status)
+        repeat(3) { state.refresh() }
+        assertEquals(1, fake.installs)
     }
 
     @Test
@@ -89,19 +96,114 @@ class AppUpdateContentTest {
     }
 
     @Test
-    fun permissionReturnDoesNotAutomaticallyInstallOrClaimSuccess() = runTest {
+    fun grantingPermissionAutomaticallyContinuesWithoutClaimingSuccess() = runTest {
         val fake = FakeInstaller()
         fake.pending = release
         fake.result = AppUpdateProgress.Ready
         fake.installResult = AppUpdateInstallResult.PERMISSION_REQUIRED
         val state = AppUpdateState(fake, fake.version) { release }
         state.check()
-        state.install()
+        state.update(release)
         assertEquals(Res.string.app_update_permission, state.status)
         assertFalse(state.installing)
-        state.refresh()
-        assertEquals(1, fake.installs)
+        state.onPause()
+        fake.permission = true
+        fake.installResult = AppUpdateInstallResult.OPENED
+        state.onResume()
+        assertEquals(2, fake.installs)
+        assertTrue(state.installing)
+        assertEquals(Res.string.app_update_installing, state.status)
         assertEquals(AppUpdateProgress.Ready, state.progress)
+    }
+
+    @Test
+    fun deniedPermissionDoesNotReopenSettingsOrRetryAutomatically() = runTest {
+        val fake = FakeInstaller()
+        fake.pending = release
+        fake.result = AppUpdateProgress.Ready
+        fake.installResult = AppUpdateInstallResult.PERMISSION_REQUIRED
+        val state = AppUpdateState(fake, fake.version) { release }
+        state.check()
+        state.update(release)
+        state.onPause()
+        state.onResume()
+        repeat(3) { state.onResume() }
+        assertEquals(1, fake.installs)
+        assertFalse(state.installing)
+        assertEquals(Res.string.app_update_permission, state.status)
+    }
+
+    @Test
+    fun completedDownloadWaitsForForegroundThenInstallsOnce() = runTest {
+        val fake = FakeInstaller()
+        val state = AppUpdateState(fake, fake.version) { release }
+        state.check()
+        state.update(release)
+        state.onPause()
+        fake.result = AppUpdateProgress.Ready
+        state.refresh()
+        assertEquals(0, fake.installs)
+        state.onResume()
+        assertEquals(1, fake.installs)
+    }
+
+    @Test
+    fun savedConfirmationResumesOnlyTheSameRelease() = runTest {
+        val fake = FakeInstaller()
+        val state = AppUpdateState(fake, fake.version) { release }
+        state.check()
+        state.update(release)
+        val saved = state.saveAutomaticUpdate()
+        fake.result = AppUpdateProgress.Ready
+        val restored =
+            AppUpdateState(
+                fake,
+                fake.version,
+                kotlinx.serialization.json.Json.decodeFromString<AppUpdateRelease?>(saved[0]),
+                saved[1].toBooleanStrict(),
+                { release },
+            )
+        restored.check()
+        assertEquals(1, fake.installs)
+    }
+
+    @Test
+    fun restoredConfirmationDoesNotAuthorizeADifferentRelease() = runTest {
+        val fake = FakeInstaller()
+        fake.pending = release.copy(sha256 = "b".repeat(64))
+        fake.result = AppUpdateProgress.Ready
+        val state = AppUpdateState(fake, fake.version, automaticRelease = release) { release }
+        state.check()
+        assertEquals(0, fake.installs)
+    }
+
+    @Test
+    fun returningFromPermissionWhileCheckIsBusyStillContinues() = runTest {
+        val fake = FakeInstaller()
+        fake.pending = release
+        fake.result = AppUpdateProgress.Ready
+        fake.permission = true
+        val gate = CompletableDeferred<Unit>()
+        fake.progressGate = gate
+        val restored = AppUpdateState(fake, fake.version, release, awaitingPermission = true) { release }
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { restored.check() }
+        restored.onResume()
+        gate.complete(Unit)
+        job.join()
+        assertEquals(1, fake.installs)
+        assertTrue(restored.installing)
+    }
+
+    @Test
+    fun verificationFailureAfterConfirmationDoesNotInstall() = runTest {
+        val fake = FakeInstaller()
+        val state = AppUpdateState(fake, fake.version) { release }
+        state.check()
+        state.update(release)
+        fake.failure = true
+        state.refresh()
+        assertEquals(Res.string.app_update_error, state.status)
+        assertEquals(0, fake.installs)
     }
 
     @Test
@@ -125,7 +227,7 @@ class AppUpdateContentTest {
         state.check()
         assertEquals(Res.string.app_update_error, state.status)
         assertEquals(AppUpdateProgress.Missing, state.progress)
-        state.install()
+        state.update(release)
         assertEquals(0, fake.installs)
     }
 
@@ -134,19 +236,26 @@ class AppUpdateContentTest {
         val fake = FakeInstaller()
         fake.pending = release
         fake.result = AppUpdateProgress.Downloading(50, 100)
-        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }) } }
+        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }, AlertManager()) } }
         onNodeWithText("Downloading update: 50%", substring = true).assertIsDisplayed()
+        onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ProgressBarRangeInfo,
+                    ProgressBarRangeInfo(0.5f, 0f..1f),
+                ),
+            )
         onNodeWithText(release.fileName, substring = true).assertIsDisplayed()
         runOnIdle { assertEquals(0, fake.installs) }
     }
 
     @Test
-    fun pollingSurvivesRecompositionWhileVerifyingADownload() = runComposeUiTest {
+    fun progressBarRemainsDeterminateWhileDownloadStatusIsBeingQueried() = runComposeUiTest {
         mainClock.autoAdvance = false
         val fake = FakeInstaller()
         fake.pending = release
         fake.result = AppUpdateProgress.Downloading(50, 100)
-        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }) } }
+        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }, AlertManager()) } }
         waitForIdle()
         val gate = CompletableDeferred<Unit>()
         runOnIdle {
@@ -155,7 +264,15 @@ class AppUpdateContentTest {
         }
         mainClock.advanceTimeBy(1_200)
         waitForIdle()
-        onNodeWithText("Verifying the downloaded APK", substring = true).assertIsDisplayed()
+        onNodeWithText("Downloading update: 50%", substring = true).assertIsDisplayed()
+        onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ProgressBarRangeInfo,
+                    ProgressBarRangeInfo(0.5f, 0f..1f),
+                ),
+            )
+        runOnIdle { assertEquals(0, fake.installs) }
         runOnIdle { gate.complete(Unit) }
         mainClock.advanceTimeByFrame()
         waitForIdle()
@@ -188,10 +305,19 @@ class AppUpdateContentTest {
     @Test
     fun availableUpdateOnlyDownloadsOnExplicitAction() = runComposeUiTest {
         val fake = FakeInstaller()
-        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }) } }
+        val alerts = AlertManager()
+        setContent { MaterialTheme { AppUpdateContent(fake.version, fake, { release }, alerts) } }
         onNodeWithText("Version 6.4 is available.", substring = true).assertIsDisplayed()
         runOnIdle { assertEquals(0, fake.downloads) }
-        onNodeWithText("Download app update").performClick()
+        onNodeWithText("Update app").performClick()
+        runOnIdle {
+            assertEquals(0, fake.downloads)
+            assertTrue(checkNotNull(alerts.currentAlert.value?.message).contains("version 6.4"))
+            alerts.currentAlert.value?.onDismiss?.invoke()
+        }
+        runOnIdle { assertEquals(0, fake.downloads) }
+        onNodeWithText("Update app").performClick()
+        runOnIdle { checkNotNull(alerts.currentAlert.value?.onConfirm).invoke() }
         runOnIdle {
             assertEquals(1, fake.downloads)
             assertEquals(0, fake.installs)
@@ -232,6 +358,9 @@ class AppUpdateContentTest {
         var progressGate: CompletableDeferred<Unit>? = null
         var downloadGate: CompletableDeferred<Unit>? = null
         var installResult = AppUpdateInstallResult.OPENED
+        var permission = false
+
+        override suspend fun canInstall() = permission
 
         override suspend fun installedVersion() = version
 

@@ -802,7 +802,10 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="voice_speed">Velocidad de reproducción</string>
     <string name="voice_message">Mensaje de voz</string>
     <string name="voice_permission_denied">Se necesita permiso de micrófono para grabar mensajes de voz</string>
-    <string name="app_update_available">Nueva actualización disponible. Pulsa para descargar.</string>
+    <string name="app_update_action">Actualizar app</string>
+    <string name="app_update_confirm">¿Quieres actualizar a la versión %1$s? La app descargará y verificará la actualización y abrirá el instalador de Android. Android puede pedirte permiso para instalar desde esta app y confirmar la actualización.</string>
+    <string name="app_update_installing">Continúa en el instalador de Android para confirmar la actualización. La instalación aún no está confirmada.</string>
+    <string name="app_update_available">Nueva actualización disponible. Pulsa para actualizar.</string>
     <string name="fleet_fire">Disparar</string>
     <string name="fleet_fire_at">Disparar a %1$s</string>
     <string name="fleet_cooldown">Recargando: %1$d s</string>
@@ -819,9 +822,9 @@ Estos datos de ubicación pueden ser utilizados para fines como aparecer en un m
     <string name="app_update_install">Instalar actualización descargada</string>
     <string name="app_update_installed">Actualización instalada y versión confirmada.</string>
     <string name="app_update_not_installed">Instalación no confirmada. La versión instalada no ha cambiado. Pulsa Instalar para reintentar.</string>
-    <string name="app_update_permission">Permite las actualizaciones desde esta app en los ajustes de Android, vuelve y pulsa Instalar.</string>
+    <string name="app_update_permission">Permite instalar desde esta app en los ajustes de Android y vuelve para continuar automáticamente. Si no diste permiso, pulsa Instalar para reintentar.</string>
     <string name="app_update_ready">Descarga verificada. Pulsa Instalar y confirma en Android.</string>
-    <string name="app_update_target">Versión %1$s disponible. Descargar no significa instalar.</string>
+    <string name="app_update_target">Versión %1$s disponible. Pulsa Actualizar app para continuar.</string>
     <string name="app_update_verifying">Verificando el APK descargado…</string>
     <string name="fleet_aim">Apuntar</string>
     <string name="fleet_reaction_hit_short">¡Bien!</string>

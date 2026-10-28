@@ -27,6 +27,8 @@ interface AppUpdateInstaller {
 
     suspend fun progress(release: AppUpdateRelease): AppUpdateProgress
 
+    suspend fun canInstall(): Boolean
+
     suspend fun install(release: AppUpdateRelease): AppUpdateInstallResult
 }
 
