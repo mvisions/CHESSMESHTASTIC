@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 import org.meshtastic.core.common.util.LocaleUnitsProvider
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.network.repository.NetworkRepository
 import org.meshtastic.core.repository.MapCameraPosition
 import org.meshtastic.core.repository.MapPrefs
@@ -50,6 +51,7 @@ class MapViewModel(
     savedStateHandle: SavedStateHandle,
     localeUnitsProvider: LocaleUnitsProvider,
     networkRepository: NetworkRepository,
+    dispatchers: CoroutineDispatchers,
 ) : BaseMapViewModel(
     mapPrefs,
     nodeRepository,
@@ -59,6 +61,7 @@ class MapViewModel(
     notificationPrefs,
     localeUnitsProvider,
     networkRepository,
+    dispatchers,
 ) {
 
     private val mutableInitialCameraState = MutableStateFlow<InitialCameraState>(InitialCameraState.Loading)

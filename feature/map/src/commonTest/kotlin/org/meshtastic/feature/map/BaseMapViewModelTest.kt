@@ -16,21 +16,29 @@
  */
 package org.meshtastic.feature.map
 
+import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
 import dev.mokkery.answering.calls
 import dev.mokkery.answering.returns
 import dev.mokkery.every
 import dev.mokkery.matcher.any
 import dev.mokkery.mock
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.meshtastic.core.common.util.MeasurementSystem
 import org.meshtastic.core.common.util.nowSeconds
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.ConnectionState
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.Node
@@ -88,22 +96,59 @@ class BaseMapViewModelTest {
         every { packetRepository.getWaypoints() } returns waypointPacketsFlow
         every { networkRepository.networkAvailable } returns MutableStateFlow(true)
 
-        viewModel =
-            BaseMapViewModel(
-                mapPrefs = mapPrefs,
-                nodeRepository = nodeRepository,
-                packetRepository = packetRepository,
-                radioController = radioController,
-                radioConfigRepository = radioConfigRepository,
-                notificationPrefs = FakeNotificationPrefs(),
-                localeUnitsProvider = localeUnitsProvider,
-                networkRepository = networkRepository,
-            )
+        viewModel = createViewModel()
     }
+
+    private fun createViewModel(defaultDispatcher: CoroutineDispatcher = testDispatcher) = BaseMapViewModel(
+        mapPrefs = mapPrefs,
+        nodeRepository = nodeRepository,
+        packetRepository = packetRepository,
+        radioController = radioController,
+        radioConfigRepository = radioConfigRepository,
+        notificationPrefs = FakeNotificationPrefs(),
+        localeUnitsProvider = localeUnitsProvider,
+        networkRepository = networkRepository,
+        dispatchers = CoroutineDispatchers(testDispatcher, testDispatcher, defaultDispatcher),
+    )
 
     @AfterTest
     fun tearDown() {
+        viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun mapCollectionsAreProcessedOnTheDefaultDispatcher() = runTest(testDispatcher) {
+        val cpuScheduler = TestCoroutineScheduler()
+        val backgroundViewModel = createViewModel(StandardTestDispatcher(cpuScheduler))
+        val node = positioned(1)
+        val waypoint = waypointPacket(id = 1, expire = nowSeconds.toInt() + 60)
+        nodeRepository.setNodes(listOf(node))
+        waypointPacketsFlow.value = listOf(waypoint)
+        backgroundScope.launch { backgroundViewModel.nodes.collect() }
+        backgroundScope.launch { backgroundViewModel.nodesWithPosition.collect() }
+        backgroundScope.launch { backgroundViewModel.waypoints.collect() }
+        try {
+            assertEquals(emptyList(), backgroundViewModel.nodes.value)
+            assertEquals(emptyList(), backgroundViewModel.nodesWithPosition.value)
+            assertEquals(emptyMap(), backgroundViewModel.waypoints.value)
+
+            cpuScheduler.runCurrent()
+
+            assertEquals(listOf(node), backgroundViewModel.nodes.value)
+            assertEquals(listOf(node), backgroundViewModel.nodesWithPosition.value)
+            assertEquals(mapOf(1 to waypoint), backgroundViewModel.waypoints.value)
+
+            storedFilters.value = storedFilters.value.copy(showIgnored = true)
+            val ignored = positioned(2, isIgnored = true)
+            nodeRepository.setNodes(listOf(node, ignored))
+            cpuScheduler.runCurrent()
+            assertEquals(listOf(node), backgroundViewModel.nodes.value)
+            assertEquals(listOf(node, ignored), backgroundViewModel.nodesWithPosition.value)
+        } finally {
+            backgroundViewModel.viewModelScope.cancel()
+            cpuScheduler.runCurrent()
+        }
     }
 
     @Test

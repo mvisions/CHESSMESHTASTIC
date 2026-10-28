@@ -52,9 +52,8 @@ class CoilImageLoaderLifecycleTest {
 
 /**
  * Boots the production Application with no database open left in flight at teardown: [startBackgroundInit] is
- * suppressed, and WorkManager is initialized synchronously first so Koin's eager `workManagerFactory()` skips its own
- * `initialize`, whose `ForceStopRunnable` would otherwise open WorkDatabase on framework SQLite from a background
- * thread.
+ * suppressed. WorkManager is initialized synchronously for any dependencies that request it, so its `ForceStopRunnable`
+ * cannot open WorkDatabase on framework SQLite from a background thread.
  *
  * Must not be private: Robolectric instantiates the `@Config` application through `AppComponentFactory`, whose
  * `Class.newInstance()` call cannot reach a package-private class.

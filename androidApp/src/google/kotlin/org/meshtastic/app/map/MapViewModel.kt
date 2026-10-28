@@ -141,6 +141,7 @@ class MapViewModel(
     notificationPrefs,
     localeUnitsProvider,
     networkRepository,
+    dispatchers,
 ) {
 
     private val _selectedWaypointId = MutableStateFlow(savedStateHandle.get<Int>("waypointId"))

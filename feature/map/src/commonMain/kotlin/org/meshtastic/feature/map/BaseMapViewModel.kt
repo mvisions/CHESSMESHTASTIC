@@ -19,6 +19,8 @@ package org.meshtastic.feature.map
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import org.jetbrains.compose.resources.StringResource
@@ -26,6 +28,7 @@ import org.meshtastic.core.common.util.LocaleUnitsProvider
 import org.meshtastic.core.common.util.MeasurementSystem
 import org.meshtastic.core.common.util.ioDispatcher
 import org.meshtastic.core.common.util.nowSeconds
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.ContactKey
 import org.meshtastic.core.model.DataPacket
 import org.meshtastic.core.model.Node
@@ -72,6 +75,7 @@ open class BaseMapViewModel(
     private val notificationPrefs: NotificationPrefs,
     localeUnitsProvider: LocaleUnitsProvider,
     networkRepository: NetworkRepository,
+    dispatchers: CoroutineDispatchers,
 ) : ViewModel() {
 
     val myNodeInfo = nodeRepository.myNodeInfo
@@ -112,6 +116,7 @@ open class BaseMapViewModel(
         nodeRepository
             .getNodes()
             .map { nodes -> nodes.filterNot { node -> node.isIgnored } }
+            .flowOn(dispatchers.default)
             .stateInWhileSubscribed(initialValue = emptyList())
 
     // Set by the map provider because this SavedStateHandle is not the Navigation 3 entry's route state.
@@ -135,6 +140,7 @@ open class BaseMapViewModel(
             // Shared with GeofenceMonitor via activeWaypointPackets — dedup by waypoint id + drop expired,
             // so the map and the geofence engine can't drift (getWaypoints is a row-per-transmission firehose).
             .mapLatest { list -> list.activeWaypointPackets(nowSeconds) }
+            .flowOn(dispatchers.default)
             .stateInWhileSubscribed(initialValue = emptyMap())
 
     /** Waypoint ids of foreign geofences the user opted in to crossing alerts for (see [NotificationPrefs]). */
@@ -184,9 +190,13 @@ open class BaseMapViewModel(
      * one declared below it.
      */
     val nodesWithPosition: StateFlow<List<Node>> =
-        combine(nodeRepository.getNodes(), storedFilters) { all, filters ->
-            all.filter { node -> node.validPosition != null && (filters.showIgnored || !node.isIgnored) }
+        combine(nodeRepository.getNodes(), storedFilters.map { it.showIgnored }.distinctUntilChanged()) {
+                all,
+                showIgnored,
+            ->
+            all.filter { node -> node.validPosition != null && (showIgnored || !node.isIgnored) }
         }
+            .flowOn(dispatchers.default)
             .stateInWhileSubscribed(initialValue = emptyList())
 
     /**

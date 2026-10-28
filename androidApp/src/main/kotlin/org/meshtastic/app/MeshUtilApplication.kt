@@ -47,7 +47,6 @@ import kotlinx.coroutines.withTimeout
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.workmanager.factory.KoinWorkerFactory
-import org.koin.androidx.workmanager.koin.workManagerFactory
 import org.koin.plugin.module.dsl.startKoin
 import org.meshtastic.app.di.AndroidKoinApp
 import org.meshtastic.core.common.ContextServices
@@ -117,7 +116,6 @@ open class MeshUtilApplication :
 
         startKoin<AndroidKoinApp> {
             androidContext(this@MeshUtilApplication)
-            workManagerFactory()
         }
 
         startBackgroundInit()
@@ -273,10 +271,7 @@ open class MeshUtilApplication :
             )
     }
 
-    /**
-     * Dead unless WorkManager falls back to on-demand init: [workManagerFactory] initializes it eagerly during
-     * [startKoin]. Constructed rather than resolved because nothing declares a [WorkerFactory] in the graph.
-     */
+    /** Used by WorkManager's on-demand initialization, after Koin is ready. */
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(KoinWorkerFactory()).build()
 }

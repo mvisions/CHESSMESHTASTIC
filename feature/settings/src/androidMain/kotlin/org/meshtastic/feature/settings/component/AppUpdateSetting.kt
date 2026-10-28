@@ -26,14 +26,23 @@ import org.meshtastic.core.ui.util.AlertManager
 
 @Composable
 fun AppUpdateSetting(modifier: Modifier = Modifier) {
+    AppUpdateSettingHost(modifier) { updateSetting -> updateSetting() }
+}
+
+@Composable
+fun AppUpdateSettingHost(
+    modifier: Modifier = Modifier,
+    content: @Composable (updateSetting: @Composable () -> Unit) -> Unit,
+) {
     val source = koinInject<AppReleaseRemoteDataSource>()
     val build = koinInject<BuildConfigProvider>()
     val installer = koinInject<AppUpdateInstaller>()
-    AppUpdateContent(
+    AppUpdateHost(
         modifier = modifier,
         installedVersion = build.versionName,
         installer = installer,
         alertManager = koinInject<AlertManager>(),
         findUpdate = { installed -> source.findUpdate(installed, arm64 = "arm64-v8a" in Build.SUPPORTED_ABIS) },
+        content = content,
     )
 }

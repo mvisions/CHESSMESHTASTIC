@@ -17,6 +17,8 @@
 package org.meshtastic.feature.settings.component
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -321,6 +323,72 @@ class AppUpdateContentTest {
         runOnIdle {
             assertEquals(1, fake.downloads)
             assertEquals(0, fake.installs)
+        }
+    }
+
+    @Test
+    fun disposingUpdateRowDoesNotCancelAConfirmedUpdateOrRepeatDiscovery() = runComposeUiTest {
+        val fake = FakeInstaller()
+        val alerts = AlertManager()
+        val downloadGate = CompletableDeferred<Unit>()
+        fake.downloadGate = downloadGate
+        var checks = 0
+        var rowComposed = false
+        val showRow = mutableStateOf(true)
+        setContent {
+            MaterialTheme {
+                AppUpdateHost(
+                    fake.version,
+                    fake,
+                    {
+                        checks++
+                        release
+                    },
+                    alerts,
+                ) { updateSetting ->
+                    if (showRow.value) {
+                        DisposableEffect(Unit) {
+                            rowComposed = true
+                            onDispose { rowComposed = false }
+                        }
+                        updateSetting()
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        onNodeWithText("Update app").performClick()
+        waitUntil { alerts.currentAlert.value?.onConfirm != null }
+        runOnIdle { checkNotNull(alerts.currentAlert.value?.onConfirm).invoke() }
+        runOnIdle { assertEquals(1, fake.downloads) }
+        mainClock.autoAdvance = false
+        runOnIdle { showRow.value = false }
+        mainClock.advanceTimeByFrame()
+        waitForIdle()
+        runOnIdle {
+            assertFalse(rowComposed)
+            downloadGate.complete(Unit)
+        }
+        mainClock.advanceTimeByFrame()
+        waitForIdle()
+        runOnIdle {
+            assertEquals(release, fake.pending)
+            fake.result = AppUpdateProgress.Ready
+        }
+        mainClock.advanceTimeBy(1_200)
+        waitForIdle()
+        runOnIdle {
+            assertEquals(1, fake.installs)
+            assertEquals(1, checks)
+        }
+        runOnIdle { showRow.value = true }
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Continue in the Android installer", substring = true).assertIsDisplayed()
+        runOnIdle {
+            assertTrue(rowComposed)
+            assertEquals(1, fake.downloads)
+            assertEquals(1, fake.installs)
+            assertEquals(1, checks)
         }
     }
 

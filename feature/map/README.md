@@ -23,6 +23,7 @@ All providers are injected via `CompositionLocal` — in `MainActivity.kt` on An
 ### Shared ViewModels (in `commonMain`)
 
 - **`BaseMapViewModel`** — Core contract for all map state management, node markers, camera positions, and traceroute node selection logic (`TracerouteNodeSelection`, `tracerouteNodeSelection()`). `SharedMapViewModel` is the concrete Koin ViewModel both hosts hand to `MapScreen`.
+- Node filtering and active-waypoint deduplication run on the injected default dispatcher rather than the UI thread. The positioned-node stream only re-filters for node changes or a change to `showIgnored`; unrelated map preferences do not rescan it.
 - **`NodeMapViewModel`** — resolves a node number to its `Node` for the Google flavor's embedded node-track map.
 - **`MeshHudViewModel`** (`hud/`) — state for the camera mesh view (`MeshHudScreen`, route `MapRoute.MeshHud`), which overlays nodes, traceroutes and position tracks on the live camera. It is reached from the Map tab on Android; the Desktop host doesn't offer it, and its `HudCameraPreview` is a no-op there.
 

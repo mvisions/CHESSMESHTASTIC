@@ -43,6 +43,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -261,6 +262,19 @@ internal fun AppUpdateContent(
     alertManager: AlertManager,
     modifier: Modifier = Modifier,
 ) {
+    AppUpdateHost(installedVersion, installer, findUpdate, alertManager, modifier) { updateSetting -> updateSetting() }
+}
+
+/** Keeps the update operation alive even when a lazy settings list disposes its row. */
+@Composable
+internal fun AppUpdateHost(
+    installedVersion: String,
+    installer: AppUpdateInstaller,
+    findUpdate: suspend (String) -> AppUpdateRelease?,
+    alertManager: AlertManager,
+    modifier: Modifier = Modifier,
+    content: @Composable (updateSetting: @Composable () -> Unit) -> Unit,
+) {
     val state =
         rememberSaveable(
             installer,
@@ -285,14 +299,25 @@ internal fun AppUpdateContent(
     LaunchedEffect(state) { state.check() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { state.onPause() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { scope.launch { state.onResume() } }
-    val downloading = state.progress as? AppUpdateProgress.Downloading
-    val polling = downloading != null || state.progress == AppUpdateProgress.Verifying
+    val polling = state.progress is AppUpdateProgress.Downloading || state.progress == AppUpdateProgress.Verifying
     LaunchedEffect(state, polling) {
         while (state.progress is AppUpdateProgress.Downloading || state.progress == AppUpdateProgress.Verifying) {
             delay(1.seconds)
             state.refresh()
         }
     }
+    content { AppUpdateRow(state, scope, alertManager, modifier) }
+}
+
+@Composable
+private fun AppUpdateRow(
+    state: AppUpdateState,
+    scope: CoroutineScope,
+    alertManager: AlertManager,
+    modifier: Modifier = Modifier,
+) {
+    val downloading = state.progress as? AppUpdateProgress.Downloading
+    val polling = downloading != null || state.progress == AppUpdateProgress.Verifying
     val actionable = state.release != null && state.progress != AppUpdateProgress.Installed
     val highlight = updateHighlight(actionable && !state.busy && !state.installing && !polling)
     Column(

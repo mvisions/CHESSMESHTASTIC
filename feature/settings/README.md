@@ -8,6 +8,8 @@ The `:feature:settings` module manages all application and device-side configura
 ### 1. `SettingsScreen` and `DesktopSettingsScreen`
 The main entry point for application-wide settings: `SettingsScreen` in `androidMain`, `DesktopSettingsScreen` in `jvmMain`. Both carry the settings search field (`search/`, `SettingsSearchViewModel`), which jumps to a matching setting.
 
+Android composes the main menu's sections on demand in a keyed lazy list. The update state, polling, lifecycle callbacks and operation scope belong to a screen-level host, not its lazy row: scrolling the update row out of view must neither cancel a confirmed download/installation nor repeat release discovery. The green pulse is only composed while the row is present.
+
 ### 2. `RadioConfigViewModel`
 Handles reading and writing configuration to the Meshtastic device over the connected transport (BLE, USB, or TCP). The config and module screens are listed in `navigation/ConfigRoute.kt` and `navigation/ModuleRoute.kt`, with one `*ConfigItemList` or `*ConfigScreen` per section under `radio/component/`.
 

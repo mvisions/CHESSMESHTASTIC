@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.meshtastic.core.di.CoroutineDispatchers
 import org.meshtastic.core.model.Node
 import org.meshtastic.core.network.repository.NetworkRepository
 import org.meshtastic.core.repository.PacketRepository
@@ -70,6 +71,7 @@ class BaseMapViewModelSitePlannerTest {
                 notificationPrefs = FakeNotificationPrefs(),
                 localeUnitsProvider = FakeLocaleUnitsProvider(),
                 networkRepository = networkRepository,
+                dispatchers = CoroutineDispatchers(testDispatcher, testDispatcher, testDispatcher),
             )
     }
 

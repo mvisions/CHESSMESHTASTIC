@@ -14,6 +14,8 @@ The core background service that manages long-running communication with the mes
 ### 3. Koin Application
 `MeshUtilApplication` is the Koin entry point, providing the global dependency injection container.
 
+WorkManager is initialized on demand using the application's `Configuration.Provider` and `KoinWorkerFactory`, not eagerly inside `startKoin`. The background log-cleanup scheduling requests it after Koin has started, keeping WorkManager setup out of the synchronous application startup path.
+
 ## Architecture
 The module primarily serves as a "glue" layer, connecting:
 - `core:*` modules for shared logic.
