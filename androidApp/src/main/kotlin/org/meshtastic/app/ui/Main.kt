@@ -56,6 +56,7 @@ import org.meshtastic.feature.firmware.navigation.firmwareGraph
 import org.meshtastic.feature.map.navigation.mapGraph
 import org.meshtastic.feature.messaging.chess.ChessInvitationHost
 import org.meshtastic.feature.messaging.games.FleetInvitationHost
+import org.meshtastic.feature.messaging.games.MinesInvitationHost
 import org.meshtastic.feature.messaging.navigation.contactsGraph
 import org.meshtastic.feature.node.navigation.nodesGraph
 import org.meshtastic.feature.settings.lockdown.LockdownDialog
@@ -95,6 +96,7 @@ fun MainScreen() {
     MeshtasticAppShell(multiBackstack = multiBackstack, uiViewModel = viewModel, hostModifier = Modifier) {
         ChessInvitationHost { gameId -> backStack.add(org.meshtastic.core.navigation.ContactsRoute.ChessGame(gameId)) }
         FleetInvitationHost { gameId -> backStack.add(org.meshtastic.core.navigation.ContactsRoute.FleetGame(gameId)) }
+        MinesInvitationHost { gameId -> backStack.add(org.meshtastic.core.navigation.ContactsRoute.MinesGame(gameId)) }
         MeshtasticNavigationSuite(
             multiBackstack = multiBackstack,
             uiViewModel = viewModel,

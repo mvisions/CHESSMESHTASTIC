@@ -30,9 +30,24 @@ Highlights of the 2.8 line:
 
 ## Games in this fork
 
-The Games menu in a private conversation offers Chess and Battleship with illustrated game cards.
+The Games menu in a private conversation offers Chess, Battleship and a two-player Minesweeper duel
+with illustrated game cards.
 Games use private messages and do not automatically create or migrate radio channels. Existing
 channels, including VIP and any previously installed games or chess channel, are left unchanged.
+
+Minesweeper uses a shared 6 × 6 board with eight hidden mines. Each player starts with three lives;
+the inviter plays first. Select a square and confirm **Reveal**. A safe square earns one point;
+a mine costs one life, and every reveal passes the turn. Zeroes do not automatically open nearby squares.
+Losing all lives loses the game. If all 28 safe squares are revealed first, the higher score wins
+(equal scores draw). The full board fits narrow portrait phones without zoom; short windows can scroll.
+The inviting phone keeps the mine positions private and sends only revealed values.
+This is a casual trust-based game, not protection against a modified host application.
+Both players need Part 6.5 or newer. Invitations, the host board, scores and pending moves are
+saved locally. Reopen Games for the same opponent to resume; **Retry** resends a pending request
+or asks for missing results without revealing another square or scoring twice.
+No automatic repeated retry loop runs over the radio. Each move and reply uses a small versioned
+direct-message command, so both phones must remain available to advance the game.
+
 Battleship shows your own fleet as a single large board with an **Aim** button.
 Cells stay square, and long opponent names and status text are bounded so they cannot squeeze the board.
 **Aim** opens a separate targeting view without status or instruction text, hiding your fleet and reactions to give the complete

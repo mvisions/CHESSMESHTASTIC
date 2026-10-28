@@ -51,6 +51,8 @@ sealed interface ContactsRoute : Route {
 
     @Serializable data class FleetGame(val gameId: String) : ContactsRoute
 
+    @Serializable data class MinesGame(val gameId: String) : ContactsRoute
+
     @Serializable data class GameSelection(val nodeId: String) : ContactsRoute
 
     @Serializable data class Share(val message: String) : ContactsRoute

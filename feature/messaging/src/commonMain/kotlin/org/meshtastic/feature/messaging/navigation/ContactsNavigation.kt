@@ -42,6 +42,8 @@ import org.meshtastic.feature.messaging.games.FleetGameScreen
 import org.meshtastic.feature.messaging.games.FleetGameViewModel
 import org.meshtastic.feature.messaging.games.GameSelectionScreen
 import org.meshtastic.feature.messaging.games.MessageGame
+import org.meshtastic.feature.messaging.games.MinesGameScreen
+import org.meshtastic.feature.messaging.games.MinesGameViewModel
 import org.meshtastic.feature.messaging.ui.contact.AdaptiveContactsScreen
 import org.meshtastic.feature.messaging.ui.contact.ContactsViewModel
 import org.meshtastic.feature.messaging.ui.sharing.ShareScreen
@@ -112,16 +114,27 @@ fun EntryProviderScope<NavKey>.contactsGraph(
         )
     }
 
+    entry<ContactsRoute.MinesGame>(metadata = { ListDetailSceneStrategy.detailPane() }) { args ->
+        val viewModel: MinesGameViewModel = koinViewModel(key = "mines-${args.gameId}")
+        MinesGameScreen(
+            gameId = args.gameId,
+            viewModel = viewModel,
+            onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
+        )
+    }
+
     entry<ContactsRoute.GameSelection>(metadata = { ListDetailSceneStrategy.detailPane() }) { args ->
         val contactsViewModel: ContactsViewModel = koinViewModel()
         val chessViewModel: ChessGameViewModel = koinViewModel(key = "chess-actions-${args.nodeId}")
         val fleetViewModel: FleetGameViewModel = koinViewModel(key = "fleet-actions-${args.nodeId}")
+        val minesViewModel: MinesGameViewModel = koinViewModel(key = "mines-actions-${args.nodeId}")
         val node = contactsViewModel.getNode(args.nodeId)
         val openGame: (String, MessageGame) -> Unit = { gameId, selected ->
             backStack.removeLastOrNull()
             when (selected) {
                 MessageGame.CHESS -> backStack.add(ContactsRoute.ChessGame(gameId))
                 MessageGame.BATTLESHIP -> backStack.add(ContactsRoute.FleetGame(gameId))
+                MessageGame.MINESWEEPER -> backStack.add(ContactsRoute.MinesGame(gameId))
             }
         }
 
@@ -129,6 +142,7 @@ fun EntryProviderScope<NavKey>.contactsGraph(
             opponentName = node.effectiveLongName,
             onSelectChess = { chessViewModel.invite(node) { gameId -> openGame(gameId, MessageGame.CHESS) } },
             onSelectFleet = { fleetViewModel.invite(node) { gameId -> openGame(gameId, MessageGame.BATTLESHIP) } },
+            onSelectMines = { minesViewModel.invite(node) { gameId -> openGame(gameId, MessageGame.MINESWEEPER) } },
             onNavigateBack = dropUnlessResumed { backStack.removeLastOrNull() },
         )
     }

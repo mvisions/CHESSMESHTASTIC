@@ -19,4 +19,5 @@ package org.meshtastic.feature.messaging.games
 enum class MessageGame {
     CHESS,
     BATTLESHIP,
+    MINESWEEPER,
 }

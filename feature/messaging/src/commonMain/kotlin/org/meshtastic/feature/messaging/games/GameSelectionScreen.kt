@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -53,7 +55,10 @@ import org.meshtastic.core.resources.games_choose_opponent
 import org.meshtastic.core.resources.games_choose_title
 import org.meshtastic.core.resources.games_fleet_art
 import org.meshtastic.core.resources.games_menu
+import org.meshtastic.core.resources.games_mines_art
 import org.meshtastic.core.resources.games_vip_background
+import org.meshtastic.core.resources.mines_game_description
+import org.meshtastic.core.resources.mines_game_title
 import org.meshtastic.core.ui.component.MainAppBar
 
 @Composable
@@ -61,6 +66,7 @@ fun GameSelectionScreen(
     opponentName: String,
     onSelectChess: () -> Unit,
     onSelectFleet: () -> Unit,
+    onSelectMines: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,6 +100,7 @@ fun GameSelectionScreen(
                 isWide = maxWidth >= GAME_CHOICES_ROW_BREAKPOINT,
                 onSelectChess = onSelectChess,
                 onSelectFleet = onSelectFleet,
+                onSelectMines = onSelectMines,
             )
         }
     }
@@ -105,9 +112,10 @@ private fun GameSelectionContent(
     isWide: Boolean,
     onSelectChess: () -> Unit,
     onSelectFleet: () -> Unit,
+    onSelectMines: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().padding(24.dp),
+        modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -121,12 +129,17 @@ private fun GameSelectionContent(
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
-        GameChoiceCards(isWide, onSelectChess, onSelectFleet)
+        GameChoiceCards(isWide, onSelectChess, onSelectFleet, onSelectMines)
     }
 }
 
 @Composable
-private fun GameChoiceCards(isWide: Boolean, onSelectChess: () -> Unit, onSelectFleet: () -> Unit) {
+private fun GameChoiceCards(
+    isWide: Boolean,
+    onSelectChess: () -> Unit,
+    onSelectFleet: () -> Unit,
+    onSelectMines: () -> Unit,
+) {
     val choices =
         listOf(
             GameChoiceOption(
@@ -134,6 +147,12 @@ private fun GameChoiceCards(isWide: Boolean, onSelectChess: () -> Unit, onSelect
                 description = stringResource(Res.string.games_chess_description),
                 onClick = onSelectChess,
                 artwork = Res.drawable.games_chess_art,
+            ),
+            GameChoiceOption(
+                title = stringResource(Res.string.mines_game_title),
+                description = stringResource(Res.string.mines_game_description),
+                onClick = onSelectMines,
+                artwork = Res.drawable.games_mines_art,
             ),
             GameChoiceOption(
                 title = stringResource(Res.string.fleet_game_title),

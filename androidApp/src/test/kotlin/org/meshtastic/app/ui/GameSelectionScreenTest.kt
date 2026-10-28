@@ -21,6 +21,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,15 +35,17 @@ import kotlin.test.assertEquals
 @Config(sdk = [34], application = android.app.Application::class)
 class GameSelectionScreenTest {
     @Test
-    fun rendersBackgroundAndBothGameChoicesOnAndroid() = runComposeUiTest {
+    fun rendersBackgroundAndAllThreeGameChoicesOnAndroid() = runComposeUiTest {
         var chessInvitations = 0
         var fleetInvitations = 0
+        var minesInvitations = 0
         setContent {
             MaterialTheme {
                 GameSelectionScreen(
                     opponentName = "Opponent",
                     onSelectChess = { chessInvitations++ },
                     onSelectFleet = { fleetInvitations++ },
+                    onSelectMines = { minesInvitations++ },
                     onNavigateBack = {},
                 )
             }
@@ -53,11 +56,19 @@ class GameSelectionScreenTest {
         runOnIdle {
             assertEquals(1, chessInvitations)
             assertEquals(0, fleetInvitations)
+            assertEquals(0, minesInvitations)
         }
-        onNodeWithText("Battleship").assertIsDisplayed().performClick()
+        onNodeWithText("Mines duel").performScrollTo().assertIsDisplayed().performClick()
+        runOnIdle {
+            assertEquals(1, chessInvitations)
+            assertEquals(1, minesInvitations)
+            assertEquals(0, fleetInvitations)
+        }
+        onNodeWithText("Battleship").performScrollTo().assertIsDisplayed().performClick()
         runOnIdle {
             assertEquals(1, chessInvitations)
             assertEquals(1, fleetInvitations)
+            assertEquals(1, minesInvitations)
         }
     }
 }
