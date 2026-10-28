@@ -30,13 +30,40 @@ import org.meshtastic.core.network.AppUpdateRelease
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = Application::class)
 class AndroidAppUpdateInstallerTest {
+    @Test
+    fun verificationCacheRequiresSameDownloadReleaseAndUnchangedFile() {
+        val file = File.createTempFile("update", ".apk")
+        try {
+            file.writeBytes(byteArrayOf(1, 2, 3))
+            val release =
+                AppUpdateRelease(
+                    "6.4",
+                    "https://github.com/mvisions/Meshtastic-Android/releases/download/media-links-test-6.4/Meshtastic-media-arm64.apk",
+                    3,
+                    "a".repeat(64),
+                )
+            val cached = VerifiedApkDownload(973, release, file.length(), file.lastModified())
+
+            assertTrue(cached.matches(973, release, file))
+            assertFalse(cached.matches(974, release, file))
+            assertFalse(cached.matches(973, release.copy(sha256 = "b".repeat(64)), file))
+
+            file.appendBytes(byteArrayOf(4))
+            assertFalse(cached.matches(973, release, file))
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun downloadSurvivesInstallerRecreationAndUsesVersionedPrivateDestination() = runTest {
         val application = ApplicationProvider.getApplicationContext<Application>()

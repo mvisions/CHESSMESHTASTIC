@@ -51,6 +51,7 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
     private val downloads = application.getSystemService(DownloadManager::class.java)
     private val preferences = application.getSharedPreferences("app-update", Context.MODE_PRIVATE)
     private val mutex = Mutex()
+    private var verifiedDownload: VerifiedApkDownload? = null
 
     override suspend fun installedVersion(): String = withContext(dispatchers.io) {
         checkNotNull(installedPackage().versionName) { "Installed application version is unavailable" }
@@ -65,6 +66,7 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
             check(!release.isInstalled(installedVersion())) { "This release is already installed" }
             val previous = preferences.getLong(DOWNLOAD_ID, -1)
             if (previous != -1L) downloads.remove(previous)
+            verifiedDownload = null
             val file = downloadFile(release)
             if (file.exists()) check(file.delete()) { "Unable to replace the previous update download" }
             val request =
@@ -100,7 +102,7 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
                 if (!cursor.moveToFirst()) return@withLock AppUpdateProgress.Missing
                 when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
                     DownloadManager.STATUS_SUCCESSFUL -> {
-                        verify(release)
+                        verify(release, id)
                         AppUpdateProgress.Ready
                     }
 
@@ -122,7 +124,12 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
     }
 
     override suspend fun install(release: AppUpdateRelease): AppUpdateInstallResult {
-        withContext(dispatchers.io) { mutex.withLock { verify(release) } }
+        withContext(dispatchers.io) {
+            mutex.withLock {
+                val id = preferences.getLong(DOWNLOAD_ID, -1)
+                verify(release, id, useCache = false)
+            }
+        }
         return withContext(dispatchers.main) {
             if (!application.packageManager.canRequestPackageInstalls()) {
                 application.startActivity(
@@ -147,13 +154,14 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
         }
     }
 
-    private suspend fun verify(release: AppUpdateRelease) {
+    private suspend fun verify(release: AppUpdateRelease, downloadId: Long, useCache: Boolean = true) {
         check(pendingRelease() == release) { "Update download does not match the selected release" }
         val file = downloadFile(release)
         check(file.isFile) { "Update APK is missing" }
+        if (useCache && verifiedDownload?.matches(downloadId, release, file) == true) return
         val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().buffered().use { input ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        file.inputStream().buffered(VERIFY_BUFFER_SIZE).use { input ->
+            val buffer = ByteArray(VERIFY_BUFFER_SIZE)
             var count = input.read(buffer)
             while (count != -1) {
                 currentCoroutineContext().ensureActive()
@@ -172,6 +180,7 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
             installedPackage().metadata(),
             archive.metadata(),
         )
+        verifiedDownload = VerifiedApkDownload(downloadId, release, file.length(), file.lastModified())
     }
 
     private fun downloadFile(release: AppUpdateRelease): File {
@@ -214,5 +223,19 @@ class AndroidAppUpdateInstaller(private val application: Application, private va
         const val DOWNLOAD_ID = "download-id"
         const val UPDATE_DIRECTORY = "app-updates"
         const val APK_MIME = "application/vnd.android.package-archive"
+        const val VERIFY_BUFFER_SIZE = 1024 * 1024
     }
+}
+
+internal data class VerifiedApkDownload(
+    val downloadId: Long,
+    val release: AppUpdateRelease,
+    val fileLength: Long,
+    val fileLastModified: Long,
+) {
+    fun matches(downloadId: Long, release: AppUpdateRelease, file: File): Boolean = this.downloadId == downloadId &&
+        this.release == release &&
+        file.isFile &&
+        file.length() == fileLength &&
+        file.lastModified() == fileLastModified
 }
